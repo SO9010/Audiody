@@ -6,5 +6,6 @@ Here is my list of goals: \
    Great design \
    Book tracking  \
    Transcript \
-   Chapter timestamps 
+   Chapter timestamps \
+Use inner tune as a big inspiration 
    
