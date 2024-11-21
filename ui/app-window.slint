@@ -1,18 +1,279 @@
-import { Button, VerticalBox } from "std-widgets.slint";
+import { Button, VerticalBox, Palette, HorizontalBox, StandardListView, StandardTableView } from "std-widgets.slint";
 
-export component AppWindow inherits Window {
-    in-out property <int> counter: 42;
-    callback request-increase-value();
-    VerticalBox {
-        Text {
-            text: "Counter: \{root.counter}";
+/*
+
+    We want to have differnt sections:
+        - Home page:
+            - Continue listening,
+            - Downloads,
+            - Short lists,
+            - Recemntly played
+        - Search/discover
+        - Books
+        - Settings
+            - Youtube login, drive login, download location
+        - Now playing location
+            - Volume
+            - Night timer
+            - Time left
+            - Speed up/down
+            - transcipt   
+        - Book view
+        - Bookmarks
+*/
+
+@rust-attr(derive(serde::Serialize, serde::Deserialize))
+export struct BookItem  {
+    title: string,
+    image-url: string,
+    chapter: int,
+    time : int,
+    now-playing: bool,
+}
+
+
+export component CoverImage inherits Rectangle {
+    width: 250px;
+    height: 250px;
+    Rectangle {
+        clip: true;
+        border-radius: 5px;
+        Image {
+            width: 100%;
+            height: 100%;
+            image-fit: ImageFit.fill;
+            source: @image-url("img/republic2_1310.jpg");
         }
+    }
+}
 
-        Button {
-            text: "Increase value";
-            clicked => {
-                root.request-increase-value();
+export component controls inherits Rectangle {
+    callback skip-forward;
+    callback skip-backward;
+    callback pause-play;
+
+    HorizontalBox {
+        alignment: center;
+
+        padding: 5px;
+        Rectangle {
+            background: touch1.pressed ? Palette.selection-background : Palette.background;
+            height: 45px;
+            width: 45px;
+            clip: true;
+            border-radius: 5px;
+            touch1 := TouchArea {
+                clicked => { root.pause-play() }
+            }
+            animate background {
+                duration: 100ms;
+            }
+            Image {
+                source: @image-url("img/skip-previous-svgrepo-com.svg");
+                height: 45px;
+                width: 45px;
+            }
+        }
+        Rectangle {
+            background: touch2.pressed ? Palette.selection-background : Palette.background;
+            height: 45px;
+            width: 45px;
+            clip: true;
+            border-radius: 5px;
+            touch2 := TouchArea {
+                clicked => { root.pause-play() }
+            }
+            animate background {
+                duration: 100ms;
+            }
+            Image {
+                source: @image-url("img/play-svgrepo-com.svg");
+                height: 45px;
+                width: 45px;
+            }
+        }
+        Rectangle {
+            background: touch3.pressed ? Palette.selection-background : Palette.background;
+            height: 45px;
+            width: 45px;
+            clip: true;
+            border-radius: 5px;
+            touch3 := TouchArea {
+                clicked => { root.skip-forward() }
+            }
+            animate background {
+                duration: 100ms;
+            }
+            Image {
+                source: @image-url("img/skip-next-svgrepo-com.svg");
+                height: 45px;
+                width: 45px;
             }
         }
     }
+    
+
+}
+
+export component PlayingBar inherits Rectangle {
+
+    background: Palette.alternate-background;
+    border-radius: 5px;
+    HorizontalBox {
+        padding: 0px;
+        Rectangle {
+            clip: true;
+            border-radius: 5px;
+            max-width: 50px;
+            Image {
+                height: 100%;
+                image-fit: ImageFit.fill;
+                source: @image-url("img/republic2_1310.jpg");
+            }
+        }
+        controls {
+        }
+    }
+}
+export component PlayingWindow inherits Rectangle {
+
+    background: Palette.alternate-background;
+    border-radius: 15px;
+    VerticalBox {
+        Rectangle {
+            clip: true;
+            border-radius: 5px;
+            max-width: 50px;
+            Image {
+                width: 100%;
+                height: 100%;
+                image-fit: ImageFit.contain;
+                source: @image-url("img/republic2_1310.jpg");
+            }
+        }
+        controls {
+
+        }
+    }
+}
+
+
+
+
+export component AppWindow inherits Window {
+    title: "Audiody";
+    background: Palette.background;
+    
+    in property <[BookItem]> book-model: [
+        {
+            title: "The Republic",
+            image-url: "img/republic2_1310.jpg",
+            chapter: 1,
+            time: 3600,
+            now-playing: true
+        },
+        {
+            title: "Pride and Prejudice",
+            image-url: "img/republic2_1310.jpg",
+            chapter: 5,
+            time: 7200,
+            now-playing: false
+        },
+        {
+            title: "The Art of War",
+            image-url: "img/republic2_1310.jpg", 
+            chapter: 2,
+            time: 1800,
+            now-playing: false
+        }
+    ];
+    
+    callback show_playing_popup;
+
+    show_playing_popup => { playing_popup.show(); }
+
+    playing_popup := PopupWindow {
+        x: 40px;
+        y: 100px;
+        width: min(playing_popup_layout.preferred-width, root.width - 80px);
+
+        Rectangle {
+            background: Palette.background;
+            border-color: Palette.border;
+            border-width: 1px;
+        }
+
+        playing_popup_layout := Dialog {
+            height:100%; width: 100%;
+
+            playing_popup_text := Text {
+                text: "Some items are not done, are you sure you wish to quit?";
+                wrap: word-wrap;
+            }
+
+        }
+    }
+
+    HorizontalBox {
+        VerticalBox {
+            min-width: 400px;
+            min-height: 600px;
+            padding: 0px;
+            spacing: 5px;
+            Rectangle {
+                background: Palette.alternate-background;
+                border-radius: 15px;
+                height: 100px;
+                Text {
+                    horizontal-alignment: TextHorizontalAlignment.left;
+                    text: "Jump back in";
+                    font-size: 35px;
+                    font-weight: 15;
+                    height: 50%;
+                    width: 100%;
+                    color: Palette.foreground;
+                }
+            }
+            Rectangle {
+                background: Palette.alternate-background;
+                border-radius: 15px;
+                min-height: 200px;
+                CoverImage {}
+            }
+            if root.width < 750px : Rectangle {
+                height: 50px;
+                PlayingBar {
+                    border-bottom-left-radius: 0px;
+                    border-bottom-right-radius: 0px;
+                }
+            }
+            Rectangle {
+                background: Palette.alternate-background;
+                border-radius: 5px;
+                HorizontalBox {
+                    Rectangle {
+                        background: #00000011;
+                        height: 50px;
+                    }Rectangle {
+                        background: #00000011;
+                        height: 50px;
+                    }Rectangle {
+                        background: #00000011;
+                        height: 50px;
+                    }Rectangle {
+                        background: #00000011;
+                        height: 50px;
+                    }
+                }
+            }
+        }
+        if root.width > 750px : Rectangle {
+            PlayingWindow {
+                min-width: 300px;
+                background: Palette.alternate-background;
+                border-radius: 15px;
+            }
+        }
+    }
+    
 }
