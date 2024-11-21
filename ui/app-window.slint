@@ -1,4 +1,4 @@
-import { Button, VerticalBox, Palette, HorizontalBox, StandardListView, StandardTableView } from "std-widgets.slint";
+import { Button, VerticalBox, Palette, HorizontalBox, StandardListView, StandardTableView, ScrollView, ListView } from "std-widgets.slint";
 
 /*
 
@@ -51,119 +51,225 @@ export component controls inherits Rectangle {
     callback skip-forward;
     callback skip-backward;
     callback pause-play;
+    in-out property <bool> playing;
 
     HorizontalBox {
         alignment: center;
-
+        spacing: 20px;
         padding: 5px;
         Rectangle {
-            background: touch1.pressed ? Palette.selection-background : Palette.background;
             height: 45px;
             width: 45px;
-            clip: true;
-            border-radius: 5px;
             touch1 := TouchArea {
                 clicked => { root.pause-play() }
             }
-            animate background {
-                duration: 100ms;
-            }
             Image {
                 source: @image-url("img/skip-previous-svgrepo-com.svg");
-                height: 45px;
-                width: 45px;
+                colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
+                height: 35px;
+                width: 35px;
             }
         }
         Rectangle {
-            background: touch2.pressed ? Palette.selection-background : Palette.background;
             height: 45px;
             width: 45px;
-            clip: true;
-            border-radius: 5px;
             touch2 := TouchArea {
-                clicked => { root.pause-play() }
-            }
-            animate background {
-                duration: 100ms;
+                clicked => {
+                    root.pause-play();
+                    root.playing = !root.playing;
+                }
             }
             Image {
-                source: @image-url("img/play-svgrepo-com.svg");
+                source: root.playing ? @image-url("img/play-svgrepo-com.svg") : @image-url("img/pause-svgrepo-com.svg");
+                colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
                 height: 45px;
                 width: 45px;
             }
         }
         Rectangle {
-            background: touch3.pressed ? Palette.selection-background : Palette.background;
             height: 45px;
             width: 45px;
-            clip: true;
-            border-radius: 5px;
             touch3 := TouchArea {
                 clicked => { root.skip-forward() }
             }
-            animate background {
-                duration: 100ms;
-            }
             Image {
                 source: @image-url("img/skip-next-svgrepo-com.svg");
-                height: 45px;
-                width: 45px;
+                colorize: touch3.pressed ? Palette.selection-background : Palette.foreground;
+                height: 35px;
+                width: 35px;
             }
         }
     }
-    
-
 }
 
 export component PlayingBar inherits Rectangle {
+    in-out property <bool> playing;
 
     background: Palette.alternate-background;
-    border-radius: 5px;
-    HorizontalBox {
-        padding: 0px;
+    border-radius: 15px;
+    HorizontalLayout {
         Rectangle {
             clip: true;
-            border-radius: 5px;
+            border-top-left-radius: 15px;
             max-width: 50px;
             Image {
-                height: 100%;
+                height: 50px;
                 image-fit: ImageFit.fill;
                 source: @image-url("img/republic2_1310.jpg");
             }
         }
-        controls {
+        Rectangle {
+            controls {
+                playing: root.playing;
+                x: -25px;
+            }
         }
     }
 }
 export component PlayingWindow inherits Rectangle {
+    in-out property <bool> playing;
+    in property <string> Name;
+    in property <string> Description;
+    in-out property <float> timeing;
+    timeing: 100.0;
 
-    background: Palette.alternate-background;
-    border-radius: 15px;
-    VerticalBox {
-        Rectangle {
-            clip: true;
-            border-radius: 5px;
-            max-width: 50px;
-            Image {
-                width: 100%;
-                height: 100%;
-                image-fit: ImageFit.contain;
-                source: @image-url("img/republic2_1310.jpg");
+    Rectangle {
+        border-top-left-radius: 15px;
+        border-radius: 0px;
+        background: Palette.alternate-background;
+        VerticalBox {
+            padding: 10px;
+            Rectangle {
+                clip: true;
+                border-radius: 5px;
+                height: root.width -20px ;
+                Image {
+                    height: root.width -20px ;
+                    image-fit: ImageFit.contain;
+                    source: @image-url("img/republic2_1310.jpg");
+                }
             }
-        }
-        controls {
+            // Placeholder for the time
+            Rectangle {
+                border-radius: 15px;
+                height: 3px;
+                background: Palette.selection-background;
+                Rectangle {
+                    x :0px;
+                    border-radius: 500px;
+                    width: root.timeing * 1px;
+                    background: Palette.selection-foreground;
+                }
+            }
+            Text {
+                text: "Plato The Republic";
+                font-size: 25px;
+                horizontal-alignment: center;
+
+                //text: root.Name;
+            }
+            Text {
+                text: "Plato The Republic this is a description that describes the audio book, I should be scrolable!";
+                font-size: 15px;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+                
+                //text: root.Name;
+            }
+            Rectangle {}
+            HorizontalLayout {
+                padding: 0px;
+                Rectangle {
+                    height: 45px;
+                    width: 45px;
+                    touch1 := TouchArea {
+                    }
+                    Image {
+                        source: @image-url("img/moon-fog-svgrepo-com.svg");
+                        colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
+                        height: 45px;
+                        width: +45px;
+                    }
+                }
+                Rectangle {
+                    controls {
+                        x: -22.5px;
+                        y: -2.43px;
+                        playing: root.playing;
+                    }
+                }
+            }
 
         }
     }
 }
 
+export component TopBar inherits Rectangle {
+    HorizontalBox {
+        padding: 7.5px;
+        Text {
+            horizontal-alignment: TextHorizontalAlignment.left;
+            text: "Audiody";
+            font-size: 25px;
+            font-weight: 500;
+            color: Palette.foreground;
+        }
+        Image {
+            horizontal-alignment: right;
+            image-fit: ImageFit.contain;
+            width: 40px;
+            height: 40px;
+            source: @image-url("img/search-svgrepo-com.svg");
+            touch := TouchArea {}
+            colorize: touch.pressed ? Palette.selection-background : Palette.foreground;
+        }
+    }
+        
+}
 
+export component NavBar inherits Rectangle {
+    in-out property <bool> hidden;
 
+    Rectangle {
+        background: Palette.alternate-background;
+        HorizontalBox {
+            alignment: LayoutAlignment.center;
+            spacing: 30px;
+            Image {
+                height: 50px;
+                width: 50px;
+                source: @image-url("img/home-1-svgrepo-com.svg");
+                colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
+                touch1 := TouchArea {
+                }
+            }Image {
+                    height: 50px;
+                    width: 50px;
+                    source: @image-url("img/book-2-svgrepo-com.svg");
+                    colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
+                    touch2 := TouchArea {}
+            }Image {
+                    height: 50px;
+                    width: 50px;
+                    source: @image-url("img/stack-apps-layers-svgrepo-com.svg");
+                    colorize: touch3.pressed ? Palette.selection-background : Palette.foreground;
+                    touch3 := TouchArea {}
+            }Image {
+                    height: 50px;
+                    width: 50px;
+                    source: @image-url("img/settings-svgrepo-com.svg");
+                    colorize: touch4.pressed ? Palette.selection-background : Palette.foreground;
+                    touch4 := TouchArea {}
+            }
+        }
+    }
+}
 
 export component AppWindow inherits Window {
     title: "Audiody";
     background: Palette.background;
-    
+    in-out property <bool> playing: false;
+    in-out property <float> timeing: 100.0;
     in property <[BookItem]> book-model: [
         {
             title: "The Republic",
@@ -215,63 +321,66 @@ export component AppWindow inherits Window {
     }
 
     HorizontalBox {
-        VerticalBox {
-            min-width: 400px;
+        padding: 0px;
+        spacing: 0px;
+            VerticalBox {
+            min-width: 350px;
             min-height: 600px;
             padding: 0px;
-            spacing: 5px;
-            Rectangle {
-                background: Palette.alternate-background;
-                border-radius: 15px;
-                height: 100px;
-                Text {
-                    horizontal-alignment: TextHorizontalAlignment.left;
-                    text: "Jump back in";
-                    font-size: 35px;
-                    font-weight: 15;
-                    height: 50%;
-                    width: 100%;
-                    color: Palette.foreground;
-                }
+            spacing: 0px;
+
+            TopBar {
+                height: 55px;
+            }
+            if root.width < 750px : Rectangle {
+                height: 3px;
+                    Rectangle {
+                        border-radius: 15px;
+                        height: 3px;
+                        background: Palette.selection-background;
+                        Rectangle {
+                            x :0px;
+                            border-radius: 500px;
+                            width: root.timeing * 1px;
+                            background: Palette.selection-foreground;
+                        }
+                    }
             }
             Rectangle {
-                background: Palette.alternate-background;
-                border-radius: 15px;
+                // This is where the views will go!
                 min-height: 200px;
-                CoverImage {}
+                ScrollView {
+                    ListView {
+                        for book in root.book-model: CoverImage {
+                            // You can bind book properties here
+                            // For example:
+                            // image-source: book.image-url
+                        }
+                    }
+                
+                ScrollView {
+                    }
+                }
             }
             if root.width < 750px : Rectangle {
                 height: 50px;
+                // Placeholder for timebar
+                // Placeholder for the time
                 PlayingBar {
+                    playing: root.playing;
                     border-bottom-left-radius: 0px;
                     border-bottom-right-radius: 0px;
-                }
+                }                
             }
-            Rectangle {
-                background: Palette.alternate-background;
-                border-radius: 5px;
-                HorizontalBox {
-                    Rectangle {
-                        background: #00000011;
-                        height: 50px;
-                    }Rectangle {
-                        background: #00000011;
-                        height: 50px;
-                    }Rectangle {
-                        background: #00000011;
-                        height: 50px;
-                    }Rectangle {
-                        background: #00000011;
-                        height: 50px;
-                    }
-                }
+
+            NavBar {
+
             }
         }
         if root.width > 750px : Rectangle {
             PlayingWindow {
-                min-width: 300px;
-                background: Palette.alternate-background;
-                border-radius: 15px;
+                playing: root.playing;
+                max-width: 350px;
             }
         }
     }
