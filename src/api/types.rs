@@ -30,17 +30,10 @@ pub struct Books {
 #[serde(rename_all = "camelCase")]
 pub struct Book {
     pub saved : bool,
-    pub id: Option<String>,
     pub title: String,
-    pub description: Option<String>,
     pub author: String,
-    pub language: Option<String>,
-    pub playtime: Option<String>,
-    pub readers: Option<Vec<Reader>>,
     pub url: String,
     pub image_URL: String,
-    pub download_URL: String,
-    
     // pub saved in drive
 }
 

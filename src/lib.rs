@@ -1,8 +1,8 @@
-use slint::{FilterModel, Model, SortModel};
+use slint::{FilterModel,    Model, SortModel};
 use std::rc::Rc;
 
 pub mod api;
-use api::{librivox::{self, LibriVoxClient}, types::SearchQuery};
+use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -28,22 +28,22 @@ async fn init() -> State {
     let main_window = AppWindow::new().unwrap();
 
     let librivox_client = LibriVoxClient::new();
-    log::info!("SAD");
 
-    let books = librivox_client.search("Marxism".to_string()).await.unwrap_or_else(|e| {
+    // At somepoint we want to implement multi threading so that the requests dont get int the way of the UI
+    // We also need to implement caching!
+    let books = librivox_client.search("Marxism".to_string()).await.unwrap_or_else(|e: api::types::AudiodyError| {
         log::error!("Error: {}", e);
         Vec::new()
     });
 
-    log::info!("{}", books.len());
+    let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
 
-    for book in books {
-        println!("{}", book.title);
-    }
-    // Remove the println! statement as it's causing the Debug trait error
+    let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
 
+    main_window.set_book_model(book_model.into());
     State { main_window }
 }
+
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {

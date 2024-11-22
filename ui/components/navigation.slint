@@ -1,0 +1,65 @@
+import { Palette, HorizontalBox, ProgressIndicator, VerticalBox } from "std-widgets.slint";
+import { AudioState } from "playback.slint";
+
+export component TopBar inherits Rectangle {
+    in property <bool> compact;
+    HorizontalBox {
+        padding: 7.5px;
+        Text {
+            horizontal-alignment: TextHorizontalAlignment.left;
+            text: "Audiody";
+            font-size: 25px;
+            font-weight: 500;
+            color: Palette.foreground;
+        }
+        Image {
+            horizontal-alignment: right;
+            image-fit: ImageFit.contain;
+            width: 40px;
+            height: 40px;
+            source: @image-url("../img/search-svgrepo-com.svg");
+            touch := TouchArea {
+                clicked => { /* Add search functionality */ }
+            }
+            colorize: touch.pressed ? Palette.selection-background : Palette.foreground;
+        }
+    }
+}
+
+export component NavBar inherits Rectangle {
+    in property <bool> hidden;
+
+    Rectangle {
+        background: Palette.alternate-background;
+        HorizontalBox {
+            alignment: LayoutAlignment.center;
+            spacing: 30px;
+            Image {
+                height: 50px;
+                width: 50px;
+                source: @image-url("../img/home-1-svgrepo-com.svg");
+                colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
+                touch1 := TouchArea {
+                }
+            }Image {
+                    height: 50px;
+                    width: 50px;
+                    source: @image-url("../img/book-2-svgrepo-com.svg");
+                    colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
+                    touch2 := TouchArea {}
+            }Image {
+                    height: 50px;
+                    width: 50px;
+                    source: @image-url("../img/stack-apps-layers-svgrepo-com.svg");
+                    colorize: touch3.pressed ? Palette.selection-background : Palette.foreground;
+                    touch3 := TouchArea {}
+            }Image {
+                    height: 50px;
+                    width: 50px;
+                    source: @image-url("../img/settings-svgrepo-com.svg");
+                    colorize: touch4.pressed ? Palette.selection-background : Palette.foreground;
+                    touch4 := TouchArea {}
+            }
+        }
+    }
+}

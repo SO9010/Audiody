@@ -1,21 +1,6 @@
 use crate::api::types::*;
 use scraper::{Html, Selector};
 
-/*
-https://librivox.org/advanced_search?
-    title=The+Communist+Manifesto
-    &author=Karl+Marx
-    &reader=
-    &keywords=
-    &genre_id=0
-    &status=all
-    &project_type=either
-    &recorded_language=1
-    &sort_order=catalog_date
-    &search_page=1
-    &search_form=advanced
-    &q=
-*/
 pub struct LibriVoxClient {
     client: reqwest::Client,
     base_url: String,
@@ -94,16 +79,10 @@ impl LibriVoxClient {
 
             Book {
                 saved: false,
-                id: None,
                 title,
-                description: Some(description),
                 author,
-                language: None,
-                playtime: None,
-                readers: None,
                 url: book_url,
                 image_URL: cover_url,
-                download_URL: String::new(), // Download URL needs to be fetched from book page
             }
         })
         .collect())

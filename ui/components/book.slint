@@ -1,0 +1,23 @@
+@rust-attr(derive(serde::Serialize, serde::Deserialize))
+export struct BookItem  {
+    saved: bool,
+    title: string,
+    author: string,
+    book-url: string,
+    image-url: string,
+}
+
+export component CoverImage inherits Rectangle {
+    width: 250px;
+    height: 250px;
+    Rectangle {
+        clip: true;
+        border-radius: 5px;
+        Image {
+            width: 100%;
+            height: 100%;
+            image-fit: ImageFit.fill;
+            source: @image-url("../img/republic2_1310.jpg");
+        }
+    }
+}
