@@ -1,6 +1,9 @@
 use slint::{FilterModel, Model, SortModel};
 use std::rc::Rc;
 
+pub mod api;
+use api::{librivox::{self, LibriVoxClient}, types::SearchQuery};
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -8,22 +11,39 @@ slint::include_modules!();
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub fn main() {
+    env_logger::init();
     let state = init();
     let main_window = state.main_window.clone_strong();
+    
     #[cfg(target_os = "android")]
     STATE.with(|ui| *ui.borrow_mut() = Some(state));
     main_window.run().unwrap();
 }
 
-fn init() -> State {
+#[tokio::main]
+async fn init() -> State {
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
     console_error_panic_hook::set_once();
 
     let main_window = AppWindow::new().unwrap();
 
+    let librivox_client = LibriVoxClient::new();
+    log::info!("SAD");
+
+    let books = librivox_client.search("Marxism".to_string()).await.unwrap_or_else(|e| {
+        log::error!("Error: {}", e);
+        Vec::new()
+    });
+
+    log::info!("{}", books.len());
+
+    for book in books {
+        println!("{}", book.title);
+    }
+    // Remove the println! statement as it's causing the Debug trait error
+
     State { main_window }
 }
-
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {

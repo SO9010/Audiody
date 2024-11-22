@@ -1,4 +1,4 @@
-import { Button, VerticalBox, Palette, HorizontalBox, StandardListView, StandardTableView, ScrollView, ListView } from "std-widgets.slint";
+import { Button, VerticalBox, TimePickerPopup, Palette, HorizontalBox, StandardListView, StandardTableView, ScrollView, ListView } from "std-widgets.slint";
 
 /*
 
@@ -22,6 +22,8 @@ import { Button, VerticalBox, Palette, HorizontalBox, StandardListView, Standard
         - Bookmarks
 */
 
+// Should add rating too!
+// Do some matching for the genres, and if it is a genre then return genres!
 @rust-attr(derive(serde::Serialize, serde::Deserialize))
 export struct BookItem  {
     title: string,
@@ -152,13 +154,13 @@ export component PlayingWindow inherits Rectangle {
             // Placeholder for the time
             Rectangle {
                 border-radius: 15px;
-                height: 3px;
-                background: Palette.selection-background;
+                height: 4px;
+                background: Palette.background;
                 Rectangle {
                     x :0px;
-                    border-radius: 500px;
+                    border-radius: 4px;
                     width: root.timeing * 1px;
-                    background: Palette.selection-foreground;
+                    background: Palette.foreground;
                 }
             }
             Text {
@@ -183,19 +185,47 @@ export component PlayingWindow inherits Rectangle {
                     height: 45px;
                     width: 45px;
                     touch1 := TouchArea {
+                        clicked => {
+                            time-picker.show();
+                        }
+                    }
+                    time-picker := TimePickerPopup {
+                        width: 360px;
+                        height: 524px;
+                        close-on-click: false;
+                        y: -450px;
+                        canceled => {
+                            time-picker.close();
+                        }
+                    
+                        accepted(time) => {
+                            debug(time);
+                            time-picker.close();
+                        }
                     }
                     Image {
                         source: @image-url("img/moon-fog-svgrepo-com.svg");
                         colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
                         height: 45px;
-                        width: +45px;
+                        width: 45px;
                     }
                 }
                 Rectangle {
                     controls {
-                        x: -22.5px;
                         y: -2.43px;
                         playing: root.playing;
+                    }
+                }
+                Rectangle {
+                    height: 45px;
+                    width: 45px;
+                    Text {
+                        text: "1x";
+                        font-size: 25px;
+                        font-weight: 600;
+                        color: touch2.pressed ? Palette.selection-background : Palette.foreground;
+                    }
+                    touch2 := TouchArea {
                     }
                 }
             }
@@ -334,17 +364,17 @@ export component AppWindow inherits Window {
             }
             if root.width < 750px : Rectangle {
                 height: 3px;
+                Rectangle {
+                    border-radius: 15px;
+                    height: 4px;
+                    background: Palette.alternate-background;
                     Rectangle {
-                        border-radius: 15px;
-                        height: 3px;
-                        background: Palette.selection-background;
-                        Rectangle {
-                            x :0px;
-                            border-radius: 500px;
-                            width: root.timeing * 1px;
-                            background: Palette.selection-foreground;
-                        }
+                        x :0px;
+                        border-radius: 4px;
+                        width: root.timeing * 1px;
+                        background: Palette.alternate-foreground;
                     }
+                }
             }
             Rectangle {
                 // This is where the views will go!
@@ -377,7 +407,7 @@ export component AppWindow inherits Window {
 
             }
         }
-        if root.width > 750px : Rectangle {
+        if root.width >= 750px : Rectangle {
             PlayingWindow {
                 playing: root.playing;
                 max-width: 350px;
