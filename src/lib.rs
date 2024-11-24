@@ -1,8 +1,8 @@
-use slint::{FilterModel,    Model, SortModel};
 use std::rc::Rc;
-
+use slint::ComponentHandle;
 pub mod api;
 use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}};
+
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -17,7 +17,7 @@ pub fn main() {
     
     #[cfg(target_os = "android")]
     STATE.with(|ui| *ui.borrow_mut() = Some(state));
-    main_window.run().unwrap();
+    tokio::task::block_in_place(||main_window.run().unwrap());
 }
 
 #[tokio::main]
@@ -26,8 +26,9 @@ async fn init() -> State {
     console_error_panic_hook::set_once();
 
     let main_window = AppWindow::new().unwrap();
+    let librivox_client = Rc::new(LibriVoxClient::new());
 
-    let librivox_client = LibriVoxClient::new();
+    let audio_state = main_window.global::<AudioState>();
 
     // At somepoint we want to implement multi threading so that the requests dont get int the way of the UI
     // We also need to implement caching!
@@ -39,11 +40,34 @@ async fn init() -> State {
     let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
 
     let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
+    main_window.set_book_model(book_model.clone().into());
+    
+    let librivox_client_clone = librivox_client.clone();
+    let main_window_weak = main_window.as_weak();
+    audio_state.on_on_search_clicked(move |query| {
+        // We also need to implement caching!
+        let libri = librivox_client_clone.clone();
+        let main_window_weak = main_window_weak.clone();
+        let search = async move {
+            let books = libri.search(query.to_string()).await.unwrap_or_else(|e: api::types::AudiodyError| {
+                log::error!("Error: {}", e);
+                Vec::new()
+            });
+    
+            let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
+    
+            let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
+            if let Some(main_window) = main_window_weak.upgrade() {
+                main_window.set_book_model(book_model.clone().into());
+            }
+        };
+        slint::spawn_local(async_compat::Compat::new(search)).unwrap();
+        
+    });
+    
 
-    main_window.set_book_model(book_model.into());
     State { main_window }
 }
-
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {

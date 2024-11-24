@@ -1,6 +1,5 @@
 import { Palette, ProgressIndicator, TimePickerPopup, HorizontalBox, VerticalBox } from "std-widgets.slint";
 
-// Global state that can be imported by other components
 export global AudioState  {
     in-out property <bool> playing: true;
     in-out property <bool> paused: false;
@@ -13,6 +12,7 @@ export global AudioState  {
     callback skip-forward();
     callback skip-backward();
     callback on-pause-clicked();
+    callback on-search-clicked(string);
 }
 
 

@@ -3,28 +3,51 @@ import { AudioState } from "playback.slint";
 
 export component TopBar inherits Rectangle {
     in property <bool> compact;
+    property <string> query;
+    property <bool> search: false;
+
     HorizontalBox {
         padding: 7.5px;
-        Text {
+        if !search : Text {
             horizontal-alignment: TextHorizontalAlignment.left;
             text: "Audiody";
             font-size: 25px;
             font-weight: 500;
             color: Palette.foreground;
         }
+
+        if search : Rectangle {
+            background: Palette.alternate-background;
+            TextInput {
+                color: Palette.foreground;
+                font-size: 25px;
+                vertical-alignment: center;
+                single-line: true;
+                edited() => {
+                    AudioState.on-search-clicked(self.text);
+                }
+            }
+        }
+
         Image {
             horizontal-alignment: right;
             image-fit: ImageFit.contain;
             width: 40px;
             height: 40px;
             source: @image-url("../img/search-svgrepo-com.svg");
+
             touch := TouchArea {
-                clicked => { /* Add search functionality */ }
+                clicked => { 
+                    if !search {
+                        search = true;
+                    } else {
+                        AudioState.on-search-clicked(query);
+                    }
+                }
             }
             colorize: touch.pressed ? Palette.selection-background : Palette.foreground;
         }
-    }
-}
+    }}
 
 export component NavBar inherits Rectangle {
     in property <bool> hidden;

@@ -1,8 +1,9 @@
 import { Button, VerticalBox, ScrollView, Palette ,ListView, HorizontalBox } from "std-widgets.slint";
 import { BookItem, CoverImage } from "components/book.slint";
-import { PlayingBar, PlayingWindow, AudioState } from "components/playback.slint"; 
+import { PlayingBar, PlayingWindow, AudioState } from "components/playback.slint";
 import { TopBar, NavBar } from "components/navigation.slint";
 
+export * from "components/playback.slint";
 /*
 
     We want to have differnt sections:
@@ -20,7 +21,7 @@ import { TopBar, NavBar } from "components/navigation.slint";
             - Night timer
             - Time left
             - Speed up/down
-            - transcipt   
+            - transcipt
         - Book view
         - Bookmarks
 */
@@ -34,8 +35,7 @@ export component AppWindow inherits Window {
     in-out property <[BookItem]> book-model: [];
     min-width: 350px;
     min-height: 600px;
-    
-     
+
     HorizontalBox {
         padding: 0px;
         spacing: 0px;
@@ -47,7 +47,7 @@ export component AppWindow inherits Window {
                 height: 55px;
                 compact: root.width >= 750px ? false : true;
             }
-            
+
             Rectangle {
                 // This is where the views will go!
                 min-height: 200px;
@@ -66,7 +66,7 @@ export component AppWindow inherits Window {
                     }
                 }
             }
-            
+
             if root.width < 750px && AudioState.playing : Rectangle {
                 height: 50px;
                 // Placeholder for timebar
@@ -74,19 +74,19 @@ export component AppWindow inherits Window {
                 PlayingBar {
                     border-bottom-left-radius: 0px;
                     border-bottom-right-radius: 0px;
-                }                
+                }
             }
             NavBar {
 
             }
         }
-        
+
         if root.width >= 750px && AudioState.playing : Rectangle {
-            
+
             PlayingWindow {
                 max-width: 350px;
             }
         }
     }
-    
+
 }
