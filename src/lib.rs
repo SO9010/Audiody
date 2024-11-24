@@ -54,7 +54,7 @@ async fn init() -> State {
                 Vec::new()
             });
     
-            let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
+            let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(), image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
     
             let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
             if let Some(main_window) = main_window_weak.upgrade() {

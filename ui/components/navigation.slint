@@ -38,11 +38,7 @@ export component TopBar inherits Rectangle {
 
             touch := TouchArea {
                 clicked => { 
-                    if !search {
-                        search = true;
-                    } else {
-                        AudioState.on-search-clicked(query);
-                    }
+                    search = !search;
                 }
             }
             colorize: touch.pressed ? Palette.selection-background : Palette.foreground;
