@@ -23,8 +23,10 @@ export component TopBar inherits Rectangle {
                 font-size: 25px;
                 vertical-alignment: center;
                 single-line: true;
-                edited() => {
+
+                accepted => {
                     AudioState.on-search-clicked(self.text);
+                    search = false;
                 }
             }
         }

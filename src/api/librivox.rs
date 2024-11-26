@@ -1,4 +1,6 @@
 use crate::api::types::*;
+use serde_json::json;
+use ureq::{Agent, Request, Response};
 use scraper::{Html, Selector};
 
 pub struct LibriVoxClient {
@@ -18,13 +20,15 @@ impl LibriVoxClient {
 // https://librivox.app/search.jsp?search=marxism
 
 impl LibriVoxClient {
-    pub async fn search(&self, query: String) -> Result<Vec<Book>, AudiodyError> {
-        let url = reqwest::Url::parse(&(self.base_url.clone() + format!("search.jsp?search={}", query).as_str()))
-            .map_err(|e| return AudiodyError::ParseError(e.to_string()))?;
-        
-        log::info!("URL: {}", url.to_string());
-        let response = reqwest::get(url).await?;
-        let document = Html::parse_document(&response.text().await?);
+    pub fn search(&self, query: String) -> Result<Vec<Book>, ureq::Error> {
+        let url = format!("{}search.jsp?search={}", self.base_url, json!(query));
+        let body: String = ureq::get(&url)
+            .call()?
+            .into_string()?;
+
+
+        log::info!("{}", url);
+        let document = Html::parse_document(&body);
 
         // Update selector for book container
         let book_selector = Selector::parse("div[style*='min-height:120px']").unwrap();
@@ -34,11 +38,18 @@ impl LibriVoxClient {
             // Get cover image and URL
             let cover_selector = Selector::parse("img[style*='float:left']").unwrap();
             let cover_url = book_element
-                .select(&cover_selector)
-                .next()
-                .and_then(|img| img.value().attr("src"))
-                .unwrap_or("")
-                .to_string();
+            .select(&cover_selector)
+            .next()
+            .and_then(|img| img.value().attr("src"))
+            .map(|src| {
+                if src.starts_with("http") {
+                    src.to_string()
+                } else {
+                    format!("{}{}", self.base_url.trim_end_matches('/'), src)
+                }
+            })
+            .unwrap_or("".to_string());
+        
 
             // Get title and book URL
             let title_selector = Selector::parse("h3.booklist-title a").unwrap();

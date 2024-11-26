@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use slint::ComponentHandle;
 pub mod api;
-use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}};
+use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}, webimage::url_to_buffer};
 
 
 #[cfg(target_arch = "wasm32")]
@@ -32,12 +32,9 @@ async fn init() -> State {
 
     // At somepoint we want to implement multi threading so that the requests dont get int the way of the UI
     // We also need to implement caching!
-    let books = librivox_client.search("Marxism".to_string()).await.unwrap_or_else(|e: api::types::AudiodyError| {
-        log::error!("Error: {}", e);
-        Vec::new()
-    });
+    let books = librivox_client.search("Marxism".to_string()).unwrap();
 
-    let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
+    let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(), book_url: book.url.into(), saved: book.saved, image: url_to_buffer(book.image_URL).unwrap()}).collect();
 
     let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
     main_window.set_book_model(book_model.clone().into());
@@ -46,28 +43,23 @@ async fn init() -> State {
     let main_window_weak = main_window.as_weak();
     audio_state.on_on_search_clicked(move |query| {
         // We also need to implement caching!
-        let libri = librivox_client_clone.clone();
-        let main_window_weak = main_window_weak.clone();
-        let search = async move {
-            let books = libri.search(query.to_string()).await.unwrap_or_else(|e: api::types::AudiodyError| {
-                log::error!("Error: {}", e);
-                Vec::new()
-            });
-    
-            let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(), image_url:book.image_URL.into(), book_url: book.url.into(), saved: book.saved }).collect();
-    
-            let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
-            if let Some(main_window) = main_window_weak.upgrade() {
-                main_window.set_book_model(book_model.clone().into());
-            }
-        };
-        slint::spawn_local(async_compat::Compat::new(search)).unwrap();
+    let libri = librivox_client_clone.clone();
+    let main_window_weak = main_window_weak.clone();
+        let books = libri.search(query.to_string()).unwrap();
+
+        let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(), image_url:book.image_URL.clone().into(), book_url: book.url.into(), saved: book.saved, image: url_to_buffer(book.image_URL).unwrap() }).collect();
+
+        let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
+        if let Some(main_window) = main_window_weak.upgrade() {
+            main_window.set_book_model(book_model.clone().into());
+        }
         
     });
     
 
     State { main_window }
 }
+
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {

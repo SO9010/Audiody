@@ -53,14 +53,37 @@ export component AppWindow inherits Window {
                 min-height: 200px;
                 ScrollView {
                     ListView {
-                        for book in root.book-model: VerticalBox {
-                            // You can bind book properties here
-                            // For example:
-                            // image-source: book.image-url
-                            Image {
-                            }
-                            Text {
-                                text: book.title;
+                        for book in root.book-model: 
+                        VerticalBox{
+                            padding: 2.5px;
+                            Rectangle {
+                                width: 160px;
+                                height: 215px;
+                                border-radius: 15px;
+                                background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
+                                VerticalBox {
+                                    spacing: 2.5px;
+                                    Image {
+                                        source: book.image;
+                                        horizontal-alignment: center;
+                                        width: 125px;
+                                        height: 125px;
+                                    }
+                                    Text {
+                                        text: book.title;
+                                        font-size: 15px;
+                                        font-weight: 700;
+                                        wrap: word-wrap;
+                                        height: 50px;
+                                    }
+                                    Text {
+                                        text: book.author;
+                                    }
+                                    
+                                }
+                                touch := TouchArea {
+                                    clicked => {}
+                                }
                             }
                         }
                     }
@@ -88,5 +111,4 @@ export component AppWindow inherits Window {
             }
         }
     }
-
 }
