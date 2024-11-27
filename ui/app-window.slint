@@ -33,9 +33,9 @@ export component AppWindow inherits Window {
     title: "Audiody";
     background: Palette.background;
     in-out property <[BookItem]> book-model: [];
+    
     min-width: 350px;
     min-height: 600px;
-
     HorizontalBox {
         padding: 0px;
         spacing: 0px;
@@ -52,41 +52,51 @@ export component AppWindow inherits Window {
                 // This is where the views will go!
                 min-height: 200px;
                 ScrollView {
-                    ListView {
-                        for book in root.book-model: 
-                        VerticalBox{
-                            padding: 2.5px;
-                            Rectangle {
-                                width: 160px;
-                                height: 215px;
-                                border-radius: 15px;
-                                background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
-                                VerticalBox {
-                                    spacing: 2.5px;
-                                    Image {
-                                        source: book.image;
-                                        horizontal-alignment: center;
-                                        width: 125px;
-                                        height: 125px;
-                                    }
-                                    Text {
-                                        text: book.title;
-                                        font-size: 15px;
-                                        font-weight: 700;
-                                        wrap: word-wrap;
-                                        height: 50px;
-                                    }
-                                    Text {
-                                        text: book.author;
-                                    }
-                                    
+                    viewport-height: root.width >= 750px 
+                    ? (floor(220 / floor((root.width - 350px)/160px)) + 1) * 220px
+                    : (floor(220 / floor(root.width/160px)) + 1) * 220px;
+            
+
+                    for book[i] in root.book-model: 
+                        Rectangle {
+                            
+                            x: root.width >= 750px 
+                            ? mod(i, max(1, floor((root.width - 350px)/160px))) * 165px + 5px
+                            : mod(i, max(1, floor(root.width/160px))) * 165px + 5px;
+
+                            y: root.width >= 750px 
+                            ? floor(i / floor((root.width - 350px)/160px)) * 220px
+                            : floor(i / floor(root.width/160px)) * 220px;
+                        
+                            width: 160px;
+                            height: 215px;                                
+
+                            border-radius: 15px;
+                            background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
+                            VerticalBox {
+                                spacing: 2.5px;
+                                Image {
+                                    source: book.image;
+                                    horizontal-alignment: center;
+                                    width: 125px;
+                                    height: 125px;
                                 }
-                                touch := TouchArea {
-                                    clicked => {}
+                                Text {
+                                    text: book.title;
+                                    font-size: 15px;
+                                    font-weight: 700;
+                                    wrap: word-wrap;
+                                    height: 50px;
                                 }
+                                Text {
+                                    text: book.author;
+                                }
+                                
+                            }
+                            touch := TouchArea {
+                                clicked => {}
                             }
                         }
-                    }
                 }
             }
 
