@@ -34,34 +34,59 @@ async fn init() -> State {
     // We also need to implement caching!
     let books = librivox_client.search("Marxism".to_string()).unwrap();
 
-    let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(), book_url: book.url.into(), saved: book.saved, image: url_to_buffer(book.image_URL).unwrap()}).collect();
+    let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
 
     let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
-    main_window.set_book_model(book_model.clone().into());
+    main_window.global::<AudioState>().set_search_model(book_model.clone().into());
     
     let librivox_client_clone = librivox_client.clone();
     let main_window_weak = main_window.as_weak();
+
     audio_state.on_on_search_clicked(move |query| {
         // We also need to implement caching!
-    let libri = librivox_client_clone.clone();
-    let main_window_weak = main_window_weak.clone();
+        let libri = librivox_client_clone.clone();
+        let main_window_weak = main_window_weak.clone();
         let books = libri.search(query.to_string()).unwrap();
 
-        let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(), image_url:book.image_URL.clone().into(), book_url: book.url.into(), saved: book.saved, image: url_to_buffer(book.image_URL).unwrap() }).collect();
+        let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
 
         let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
         if let Some(main_window) = main_window_weak.upgrade() {
-            main_window.set_book_model(book_model.clone().into());
+            main_window.global::<AudioState>().set_search_model(book_model.clone().into());
         }
-        
     });
+
+    let librivox_client_clone = librivox_client.clone();
+    let main_window_weak = main_window.as_weak();
+
+    audio_state.on_on_book_view(move |bookURL| {
+        // We also need to implement caching!
+        let libri = librivox_client_clone.clone();
+        let main_window_weak = main_window_weak.clone();
     
+        let book = libri.get_book(bookURL.to_string()).unwrap();
+
+        let book_item: BookItem = BookItem {
+            title: book.title.into(),
+            author: book.author.into(),
+            image_url: book.image_URL.clone().into(),
+            book_url: book.url.into(),
+            saved: book.saved,
+            image: url_to_buffer(book.image_URL).unwrap(),
+            // Find a better way of doing this
+            chapter_urls: slint::ModelRc::new(slint::VecModel::from(book.chapter_urls.into_iter().map(|url| url.into()).collect::<Vec<slint::SharedString>>())),
+            chapter_durations: slint::ModelRc::new(slint::VecModel::from(book.chapter_durations.into_iter().map(|dur| dur.into()).collect::<Vec<slint::SharedString>>())),
+            chapter_reader: slint::ModelRc::new(slint::VecModel::from(book.chapter_reader.into_iter().map(|reader| reader.into()).collect::<Vec<slint::SharedString>>()))
+        };
+
+        if let Some(main_window) = main_window_weak.upgrade() {
+            main_window.global::<AudioState>().set_book_view(book_item);
+        }
+    });
 
     State { main_window }
 }
-
-#[cfg(target_os = "android")]
-#[no_mangle]
+#[cfg(target_os = "android")]#[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {
     use slint::android::android_activity::{MainEvent, PollEvent};
     slint::android::init_with_event_listener(app, |event| {

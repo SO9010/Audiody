@@ -27,6 +27,7 @@ export component TopBar inherits Rectangle {
                 accepted => {
                     AudioState.on-search-clicked(self.text);
                     search = false;
+                    AudioState.current-view = 1;
                 }
             }
         }

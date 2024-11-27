@@ -2,6 +2,8 @@ import { Button, VerticalBox, ScrollView, Palette ,ListView, HorizontalBox } fro
 import { BookItem, CoverImage } from "components/book.slint";
 import { PlayingBar, PlayingWindow, AudioState } from "components/playback.slint";
 import { TopBar, NavBar } from "components/navigation.slint";
+import { BookDetail } from "views/book.slint";
+import { SearchDetail } from "views/search.slint";
 
 export * from "components/playback.slint";
 /*
@@ -32,7 +34,6 @@ export * from "components/playback.slint";
 export component AppWindow inherits Window {
     title: "Audiody";
     background: Palette.background;
-    in-out property <[BookItem]> book-model: [];
     
     min-width: 350px;
     min-height: 600px;
@@ -56,47 +57,10 @@ export component AppWindow inherits Window {
                     ? (floor(220 / floor((root.width - 350px)/160px)) + 1) * 220px
                     : (floor(220 / floor(root.width/160px)) + 1) * 220px;
             
-
-                    for book[i] in root.book-model: 
-                        Rectangle {
-                            
-                            x: root.width >= 750px 
-                            ? mod(i, max(1, floor((root.width - 350px)/160px))) * 165px + 5px
-                            : mod(i, max(1, floor(root.width/160px))) * 165px + 5px;
-
-                            y: root.width >= 750px 
-                            ? floor(i / floor((root.width - 350px)/160px)) * 220px
-                            : floor(i / floor(root.width/160px)) * 220px;
-                        
-                            width: 160px;
-                            height: 215px;                                
-
-                            border-radius: 15px;
-                            background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
-                            VerticalBox {
-                                spacing: 2.5px;
-                                Image {
-                                    source: book.image;
-                                    horizontal-alignment: center;
-                                    width: 125px;
-                                    height: 125px;
-                                }
-                                Text {
-                                    text: book.title;
-                                    font-size: 15px;
-                                    font-weight: 700;
-                                    wrap: word-wrap;
-                                    height: 50px;
-                                }
-                                Text {
-                                    text: book.author;
-                                }
-                                
-                            }
-                            touch := TouchArea {
-                                clicked => {}
-                            }
-                        }
+                    // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
+                    if AudioState.current-view == 5: BookDetail {}
+                    if AudioState.current-view == 1: SearchDetail {}
+                    
                 }
             }
 

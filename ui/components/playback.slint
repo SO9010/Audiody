@@ -1,10 +1,17 @@
 import { Palette, ProgressIndicator, TimePickerPopup, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { BookItem, CoverImage } from "book.slint";
 
 export global AudioState  {
     in-out property <bool> playing: true;
     in-out property <bool> paused: false;
     in-out property <float> timing: 30.0;
 
+    in-out property <[BookItem]> search-model: [];
+    in-out property <BookItem> book-view;
+
+    // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
+    in-out property <int> current-view: 0;
+    
     callback toggle-pause();
     toggle-pause => {
         paused = !paused;
@@ -13,6 +20,7 @@ export global AudioState  {
     callback skip-backward();
     callback on-pause-clicked();
     callback on-search-clicked(string);
+    callback on-book-view(string);
 }
 
 

@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::api::types::*;
 use serde_json::json;
 use ureq::{Agent, Request, Response};
@@ -91,11 +93,100 @@ impl LibriVoxClient {
             Book {
                 saved: false,
                 title,
+                description: "".to_string(),
                 author,
                 url: book_url,
                 image_URL: cover_url,
+                chapter_urls: vec![],
+                chapter_durations: vec![],
+                chapter_reader: vec![],
             }
         })
         .collect())
+    }
+
+    pub fn get_book(&self, url: String) -> Result<Book, ureq::Error> {
+        let url = format!("{}{}", self.base_url, url);
+
+        let body: String = ureq::get(&url)
+            .call()?
+            .into_string()?;
+
+
+        log::info!("Calling: {}", url);
+        let document = Html::parse_document(&body);
+
+        // Update selector for book container
+        let book_selector = Selector::parse("div[style*='min-height:120px']").unwrap();
+            
+        // Extract title
+        let title_selector = Selector::parse("h1.book-title").unwrap();
+        let title = document
+            .select(&title_selector)
+            .next()
+            .map(|e| e.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+
+        // Extract author
+        let author_selector = Selector::parse("h2.author a").unwrap();
+        let author = document
+            .select(&author_selector)
+            .next()
+            .map(|e| e.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+
+        // Extract cover image URL
+        let image_selector = Selector::parse("div.cover-image img").unwrap();
+        let image_url = document
+            .select(&image_selector)
+            .next()
+            .and_then(|img| img.value().attr("src"))
+            .map(|src| src.to_string())
+            .unwrap_or_default();
+
+        // Extract description
+        let desc_selector = Selector::parse("div#description p[itemprop='description']").unwrap();
+        let description = document
+            .select(&desc_selector)
+            .next()
+            .map(|e| e.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+
+            let chapters_selector = Selector::parse("table.table.table-striped tr").unwrap();
+        
+        let chapters: Vec<(String, String, String)> = document
+        .select(&chapters_selector)
+        .map(|row| {
+            let link = row.select(&Selector::parse("td a").unwrap())
+                .next()
+                .and_then(|a| a.value().attr("href"))
+                .unwrap_or_default()
+                .to_string();
+            
+            let duration = row.select(&Selector::parse("td:nth-child(2)").unwrap())
+                .next()
+                .map(|td| td.text().collect::<String>().trim().to_string())
+                .unwrap_or_default();
+
+            let reader = row.select(&Selector::parse("td:nth-child(3)").unwrap())
+                .next()
+                .map(|td| td.text().collect::<String>().trim().to_string())
+                .unwrap_or_default();
+
+            (link, duration, reader)
+        })
+        .collect();
+
+        Ok(Book {
+            saved: false,
+            title,
+            description,
+            author,
+            url,
+            image_URL: image_url,
+            chapter_urls: chapters.iter().map(|(link, _, _)| link.clone()).collect(),
+            chapter_durations: chapters.iter().map(|(_, duration, _)| duration.clone()).collect(),
+            chapter_reader: chapters.iter().map(|(_, _, reader)| reader.clone()).collect(),
+        })
     }
 }

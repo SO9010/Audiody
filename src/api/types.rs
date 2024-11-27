@@ -31,6 +31,10 @@ pub struct Books {
 pub struct Book {
     pub saved : bool,
     pub title: String,
+    pub chapter_urls: Vec<String>,
+    pub chapter_durations: Vec<String>,
+    pub chapter_reader: Vec<String>,
+    pub description: String,
     pub author: String,
     pub url: String,
     pub image_URL: String,

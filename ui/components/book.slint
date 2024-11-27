@@ -1,9 +1,12 @@
-export struct BookItem  {
+export struct BookItem {
     saved: bool,
     title: string,
     author: string,
     book-url: string,
     image-url: string,
+    chapter-urls: [string],
+    chapter-durations: [string],
+    chapter-reader: [string],
     image: image,
 }
 
