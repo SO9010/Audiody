@@ -52,16 +52,8 @@ export component AppWindow inherits Window {
             Rectangle {
                 // This is where the views will go!
                 min-height: 200px;
-                ScrollView {
-                    viewport-height: root.width >= 750px 
-                    ? (floor(220 / floor((root.width - 350px)/160px)) + 1) * 220px
-                    : (floor(220 / floor(root.width/160px)) + 1) * 220px;
-            
-                    // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
-                    if AudioState.current-view == 5: BookDetail {}
-                    if AudioState.current-view == 1: SearchDetail {}
-                    
-                }
+                if AudioState.current-view == 5: BookDetail {}
+                if AudioState.current-view == 1: SearchDetail {}
             }
 
             if root.width < 750px && AudioState.playing : Rectangle {

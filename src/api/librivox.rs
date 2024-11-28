@@ -104,78 +104,80 @@ impl LibriVoxClient {
         })
         .collect())
     }
-
+    
     pub fn get_book(&self, url: String) -> Result<Book, ureq::Error> {
+        let mut url = url;
+        url.remove(0);
         let url = format!("{}{}", self.base_url, url);
 
-        let body: String = ureq::get(&url)
-            .call()?
+        let body = ureq::get(&url)
+            .call().unwrap()
             .into_string()?;
-
 
         log::info!("Calling: {}", url);
         let document = Html::parse_document(&body);
-
-        // Update selector for book container
-        let book_selector = Selector::parse("div[style*='min-height:120px']").unwrap();
-            
-        // Extract title
+                
+        // Extract title with fallback
         let title_selector = Selector::parse("h1.book-title").unwrap();
         let title = document
             .select(&title_selector)
             .next()
             .map(|e| e.text().collect::<String>().trim().to_string())
-            .unwrap_or_default();
+            .unwrap_or_else(|| "Unknown Title".to_string());
 
-        // Extract author
+        // Extract author with fallback
         let author_selector = Selector::parse("h2.author a").unwrap();
         let author = document
             .select(&author_selector)
             .next()
             .map(|e| e.text().collect::<String>().trim().to_string())
-            .unwrap_or_default();
+            .unwrap_or_else(|| "Unknown Author".to_string());
 
-        // Extract cover image URL
+        // Extract cover image URL with default placeholder
         let image_selector = Selector::parse("div.cover-image img").unwrap();
         let image_url = document
             .select(&image_selector)
             .next()
             .and_then(|img| img.value().attr("src"))
             .map(|src| src.to_string())
-            .unwrap_or_default();
+            .unwrap_or_else(|| "default_cover.jpg".to_string());
 
-        // Extract description
+        // Extract description with meaningful fallback
         let desc_selector = Selector::parse("div#description p[itemprop='description']").unwrap();
         let description = document
             .select(&desc_selector)
             .next()
             .map(|e| e.text().collect::<String>().trim().to_string())
-            .unwrap_or_default();
+            .unwrap_or_else(|| "No description available".to_string());
 
-            let chapters_selector = Selector::parse("table.table.table-striped tr").unwrap();
-        
+        // Extract chapters with validation
+        let chapters_selector = Selector::parse("table.table.table-striped tr").unwrap();
         let chapters: Vec<(String, String, String)> = document
-        .select(&chapters_selector)
-        .map(|row| {
-            let link = row.select(&Selector::parse("td a").unwrap())
-                .next()
-                .and_then(|a| a.value().attr("href"))
-                .unwrap_or_default()
-                .to_string();
-            
-            let duration = row.select(&Selector::parse("td:nth-child(2)").unwrap())
-                .next()
-                .map(|td| td.text().collect::<String>().trim().to_string())
-                .unwrap_or_default();
+            .select(&chapters_selector)
+            .filter_map(|row| {
+                let link = row.select(&Selector::parse("td a").unwrap())
+                    .next()
+                    .and_then(|a| a.value().attr("href"))
+                    .map(|s| s.to_string());
+                
+                let duration = row.select(&Selector::parse("td:nth-child(2)").unwrap())
+                    .next()
+                    .map(|td| td.text().collect::<String>().trim().to_string());
 
-            let reader = row.select(&Selector::parse("td:nth-child(3)").unwrap())
-                .next()
-                .map(|td| td.text().collect::<String>().trim().to_string())
-                .unwrap_or_default();
+                let reader = row.select(&Selector::parse("td:nth-child(3)").unwrap())
+                    .next()
+                    .map(|td| td.text().collect::<String>().trim().to_string());
 
-            (link, duration, reader)
-        })
-        .collect();
+                match (link, duration, reader) {
+                    (Some(l), Some(d), Some(r)) => Some((l, d, r)),
+                    _ => None
+                }
+            })
+            .collect();
+
+        if chapters.is_empty() {
+            log::warn!("No chapters found for book: {}", title);
+        }
 
         Ok(Book {
             saved: false,

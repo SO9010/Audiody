@@ -1,24 +1,24 @@
 import { AudioState } from "../components/playback.slint";
-import { VerticalBox } from "std-widgets.slint";
+import { VerticalBox, ScrollView } from "std-widgets.slint";
 
 export component BookDetail inherits Rectangle {
-    Rectangle {
-        VerticalBox {
-            Image {
-                width: root.width;
-                height: root.width;
-                image-fit: ImageFit.fill;
-                source: AudioState.book-view.image;
-            }
-            Text {
-                text: AudioState.book-view.title;
-            }
-            Text {
-                text: AudioState.book-view.author;
-            }
+    ScrollView {
+        Rectangle {
+            VerticalBox {
+                Image {
+                    width: root.width;
+                    height: root.width;
+                    image-fit: ImageFit.fill;
+                    source: AudioState.book-view.image;
+                }
+                Text {
+                    text: AudioState.book-view.title;
+                }
+                Text {
+                    text: AudioState.book-view.author;
+                }
 
+            }
         }
-        
-
     }
 }

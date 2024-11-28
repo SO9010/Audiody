@@ -1,47 +1,114 @@
-import { Button, VerticalBox, ScrollView, Palette ,ListView, HorizontalBox } from "std-widgets.slint";
+import { Button, VerticalBox, ScrollView, Palette ,ListView, HorizontalBox, GridBox } from "std-widgets.slint";
 import { AudioState } from "../components/playback.slint";
 
 export component SearchDetail inherits Rectangle {
-    for book[i] in AudioState.search-model: 
-    Rectangle {
-        
-        x: root.width >= 750px 
-        ? mod(i, max(1, floor((root.width - 350px)/170px))) * 165px + 5px
-        : mod(i, max(1, floor(root.width/170px))) * 165px + 5px;
-
-        y: root.width >= 750px 
-        ? floor(i / floor((root.width - 350px)/170px)) * 220px
-        : floor(i / floor(root.width/170px)) * 220px;
-        
-        width: 160px;
-        height: 215px;                                
-
-        border-radius: 15px;
-        background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
+    property <length> item-width: 160px; 
+    property <length> item-height: 215px;
+    property <length> item-padding: 10px;
+    property <int> libre-item-count: AudioState.search-model.length;
+    ScrollView {
+        viewport-height: item-height * 3;
         VerticalBox {
-            spacing: 2.5px;
-            Image {
-                source: book.image;
-                horizontal-alignment: center;
-                width: 125px;
-                height: 125px;
+            Text{
+                text: "Librevox";
+                font-size: 20px;
             }
-            Text {
-                text: book.title;
-                font-size: 15px;
-                font-weight: 700;
-                wrap: word-wrap;
-                height: 50px;
+            ScrollView {
+                viewport-width: item-width * libre-item-count;
+                viewport-height: item-height;
+                
+                if libre-item-count > 0 : Rectangle {
+                    width: item-width * libre-item-count;
+                    height: item-height;
+                
+                    for book[i] in AudioState.search-model: Rectangle {
+                        x: i * (item-width + item-padding);
+    
+                        min-width: item-width;
+                        min-height: item-height;                                
+                        border-radius: 15px;
+                        background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
+                        
+                        VerticalBox {
+                            spacing: 2.5px;
+                            Image {
+                                source: book.image;
+                                horizontal-alignment: center;
+                                width: 125px;
+                                height: 125px;
+                            }
+                            Text {
+                                text: book.title;
+                                font-size: 15px;
+                                font-weight: 700;
+                                wrap: word-wrap;
+                                height: 50px;
+                            }
+                            Text {
+                                text: book.author;
+                            }
+                        }
+                        touch := TouchArea {
+                            clicked => {
+                                AudioState.on-book-view(book.book-url);
+                                AudioState.current-view = 5;
+                            }
+                        }
+                    }
+                
+                }
             }
-            Text {
-                text: book.author;
+            Text{
+                text: "Libri";
+                font-size: 20px;
             }
-        }
-        touch := TouchArea {
-            clicked => {
-                AudioState.on-book-view(book.book-url);
-                AudioState.current-view = 5;
+            ScrollView {
+                viewport-width: item-width * libre-item-count;
+                viewport-height: item-height;
+                
+                if libre-item-count > 0 : Rectangle {
+                    width: item-width * libre-item-count;
+                    height: item-height;
+                
+                    for book[i] in AudioState.search-model: Rectangle {
+                        x: i * (item-width + item-padding);
+    
+                        width: item-width;
+                        height: item-height;                                
+                        border-radius: 15px;
+                        background: touch2.pressed ? Palette.selection-background : Palette.alternate-background;
+                        
+                        VerticalBox {
+                            spacing: 2.5px;
+                            Image {
+                                source: book.image;
+                                horizontal-alignment: center;
+                                width: 125px;
+                                height: 125px;
+                            }
+                            Text {
+                                text: book.title;
+                                font-size: 15px;
+                                font-weight: 700;
+                                wrap: word-wrap;
+                                height: 50px;
+                            }
+                            Text {
+                                text: book.author;
+                            }
+                        }
+                        touch2 := TouchArea {
+                            clicked => {
+                                AudioState.on-book-view(book.book-url);
+                                AudioState.current-view = 5;
+                            }
+                        }
+                    }
+                
+                }
             }
         }
     }
+    
 }
+
