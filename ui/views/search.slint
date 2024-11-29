@@ -8,68 +8,18 @@ export component SearchDetail inherits Rectangle {
     property <int> libre-item-count: AudioState.search-model.length;
     ScrollView {
         viewport-height: item-height * 3;
-        VerticalBox {
-            Text{
-                text: "Librevox";
-                font-size: 20px;
-            }
-            ScrollView {
-                viewport-width: item-width * libre-item-count;
-                viewport-height: item-height;
-                
-                if libre-item-count > 0 : Rectangle {
-                    width: item-width * libre-item-count;
-                    height: item-height;
-                
-                    for book[i] in AudioState.search-model: Rectangle {
-                        x: i * (item-width + item-padding);
-    
-                        min-width: item-width;
-                        min-height: item-height;                                
-                        border-radius: 15px;
-                        background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
-                        
-                        VerticalBox {
-                            spacing: 2.5px;
-                            Image {
-                                source: book.image;
-                                horizontal-alignment: center;
-                                width: 125px;
-                                height: 125px;
-                            }
-                            Text {
-                                text: book.title;
-                                font-size: 15px;
-                                font-weight: 700;
-                                wrap: word-wrap;
-                                height: 50px;
-                            }
-                            Text {
-                                text: book.author;
-                            }
-                        }
-                        touch := TouchArea {
-                            clicked => {
-                                AudioState.on-book-view(book.book-url);
-                                AudioState.current-view = 5;
-                            }
-                        }
-                    }
-                
+        viewport-width: root.width;
+        Rectangle {
+            height: item-height + 45px;
+            VerticalBox {
+                padding: 0px;
+                Text{
+                    text: "Libri";
+                    font-size: 20px;
                 }
-            }
-            Text{
-                text: "Libri";
-                font-size: 20px;
-            }
-            ScrollView {
-                viewport-width: item-width * libre-item-count;
-                viewport-height: item-height;
-                
-                if libre-item-count > 0 : Rectangle {
-                    width: item-width * libre-item-count;
-                    height: item-height;
-                
+                ScrollView {
+                    viewport-width: (item-width + item-padding) * libre-item-count;
+                    viewport-height: item-height + 20px;
                     for book[i] in AudioState.search-model: Rectangle {
                         x: i * (item-width + item-padding);
     
@@ -104,11 +54,9 @@ export component SearchDetail inherits Rectangle {
                             }
                         }
                     }
-                
                 }
             }
         }
+        
     }
-    
 }
-
