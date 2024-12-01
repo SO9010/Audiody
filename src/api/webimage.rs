@@ -8,11 +8,11 @@ use super::types::AudiodyError;
 pub fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
     // Fetch the image data from URL using blocking client
     let mut url = url;
-    if (url.find("lh3.googleusercontent.com").is_some()) {
+    if url.find("lh3.googleusercontent.com").is_some() {
         url.push('0');
     }
     let response = ureq::get(&url).call()?;
-    
+    log::info!("Getting image from {}", url);
     // Read response body into a Vec<u8>
     let mut buffer = Vec::new();
     response.into_reader().read_to_end(&mut buffer)?;

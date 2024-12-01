@@ -29,7 +29,7 @@ impl LibriVoxClient {
             .into_string()?;
 
 
-        log::info!("{}", url);
+        log::info!("Librivox search: {}", url);
         let document = Html::parse_document(&body);
 
         // Update selector for book container

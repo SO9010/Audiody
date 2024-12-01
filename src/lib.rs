@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use slint::ComponentHandle;
 pub mod api;
-use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}, webimage::url_to_buffer};
+use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}, webimage::url_to_buffer, yt::{self, YouTubeClient}};
 
 
 #[cfg(target_arch = "wasm32")]
@@ -20,8 +20,7 @@ pub fn main() {
     tokio::task::block_in_place(||main_window.run().unwrap());
 }
 
-#[tokio::main]
-async fn init() -> State {
+fn init() -> State {
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
     console_error_panic_hook::set_once();
 
@@ -37,7 +36,7 @@ async fn init() -> State {
     let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
 
     let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
-    main_window.global::<AudioState>().set_search_model(book_model.clone().into());
+    main_window.global::<AudioState>().set_search_libi(book_model.clone().into());
     
     let librivox_client_clone = librivox_client.clone();
     let main_window_weak = main_window.as_weak();
@@ -46,13 +45,18 @@ async fn init() -> State {
         // We also need to implement caching!
         let libri = librivox_client_clone.clone();
         let main_window_weak = main_window_weak.clone();
-        let books = libri.search(query.to_string()).unwrap();
+        let yt = YouTubeClient::new();
+        let libri_books = libri.search(query.to_string()).unwrap();
+        let yt_books = yt.search(query.to_string()).unwrap();
 
-        let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
+        let libri_book_items: Vec<BookItem> = libri_books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
+        let yt_book_items: Vec<BookItem> = yt_books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
 
-        let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
+        let libri_book_model = Rc::new(slint::VecModel::<BookItem>::from(libri_book_items));
+        let yt_book_model = Rc::new(slint::VecModel::<BookItem>::from(yt_book_items));
         if let Some(main_window) = main_window_weak.upgrade() {
-            main_window.global::<AudioState>().set_search_model(book_model.clone().into());
+            main_window.global::<AudioState>().set_search_libi(libri_book_model.clone().into());
+            main_window.global::<AudioState>().set_search_yt(yt_book_model.clone().into());
         }
     });
 
