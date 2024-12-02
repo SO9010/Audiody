@@ -2,7 +2,7 @@ use std::rc::Rc;
 use slint::ComponentHandle;
 pub mod api;
 use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}, webimage::url_to_buffer, yt::{self, YouTubeClient}};
-
+use tokio::runtime::Runtime; // 0.3.5
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -25,35 +25,41 @@ fn init() -> State {
     console_error_panic_hook::set_once();
 
     let main_window = AppWindow::new().unwrap();
+
     let librivox_client = Rc::new(LibriVoxClient::new());
 
     let audio_state = main_window.global::<AudioState>();
 
     // At somepoint we want to implement multi threading so that the requests dont get int the way of the UI
     // We also need to implement caching!
-    let books = librivox_client.search("Marxism".to_string()).unwrap();
+    // let books = librivox_client.search("Marxism".to_string()).unwrap();
 
-    let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
+    // let book_items: Vec<BookItem> = books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
 
-    let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
-    main_window.global::<AudioState>().set_search_libi(book_model.clone().into());
+    // let book_model = Rc::new(slint::VecModel::<BookItem>::from(book_items));
+    // main_window.global::<AudioState>().set_search_libi(book_model.clone().into());
     
     let librivox_client_clone = librivox_client.clone();
     let main_window_weak = main_window.as_weak();
+    let yt = YouTubeClient::new();
+    //  let libri_books = libri.search(query.to_string()).unwrap();
 
     audio_state.on_on_search_clicked(move |query| {
         // We also need to implement caching!
         let libri = librivox_client_clone.clone();
         let main_window_weak = main_window_weak.clone();
         let yt = YouTubeClient::new();
-        let libri_books = libri.search(query.to_string()).unwrap();
-        let yt_books = yt.search(query.to_string()).unwrap();
+        let mut yt_book_items: Vec<BookItem>;
 
-        let libri_book_items: Vec<BookItem> = libri_books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
-        let yt_book_items: Vec<BookItem> = yt_books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:url_to_buffer(book.image_URL).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
+        let libri_books = libri.search(query.to_string()).unwrap();
+
+        let yt_books = Runtime::new().unwrap().block_on(yt.search(query.to_string())).unwrap();
+        let yt_book_items: Vec<BookItem> = yt_books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:Runtime::new().unwrap().block_on(url_to_buffer(book.image_URL)).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
+        let yt_book_model = Rc::new(slint::VecModel::<BookItem>::from(yt_book_items));
+
+        let libri_book_items: Vec<BookItem> = libri_books.into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),image_url:book.image_URL.clone().into(),book_url:book.url.into(),saved:book.saved,image:Runtime::new().unwrap().block_on(url_to_buffer(book.image_URL)).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
 
         let libri_book_model = Rc::new(slint::VecModel::<BookItem>::from(libri_book_items));
-        let yt_book_model = Rc::new(slint::VecModel::<BookItem>::from(yt_book_items));
         if let Some(main_window) = main_window_weak.upgrade() {
             main_window.global::<AudioState>().set_search_libi(libri_book_model.clone().into());
             main_window.global::<AudioState>().set_search_yt(yt_book_model.clone().into());
@@ -76,7 +82,7 @@ fn init() -> State {
             image_url: book.image_URL.clone().into(),
             book_url: book.url.into(),
             saved: book.saved,
-            image: url_to_buffer(book.image_URL).unwrap(),
+            image: Runtime::new().unwrap().block_on(url_to_buffer(book.image_URL)).unwrap(),
             // Find a better way of doing this
             chapter_urls: slint::ModelRc::new(slint::VecModel::from(book.chapter_urls.into_iter().map(|url| url.into()).collect::<Vec<slint::SharedString>>())),
             chapter_durations: slint::ModelRc::new(slint::VecModel::from(book.chapter_durations.into_iter().map(|dur| dur.into()).collect::<Vec<slint::SharedString>>())),

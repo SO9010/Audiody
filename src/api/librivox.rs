@@ -6,14 +6,12 @@ use ureq::{Agent, Request, Response};
 use scraper::{Html, Selector};
 
 pub struct LibriVoxClient {
-    client: reqwest::Client,
     base_url: String,
 }
 
 impl LibriVoxClient {
     pub fn new() -> Self {
         Self {
-            client: reqwest::Client::new(),
             base_url: "https://librivox.app/".to_string(),
         }
     }

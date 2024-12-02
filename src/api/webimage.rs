@@ -5,17 +5,19 @@ use ureq::{Agent, Request, Response};
 
 use super::types::AudiodyError;
 
-pub fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
-    // Fetch the image data from URL using blocking client
+pub async fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
+    // Fetch the image data from URL using async client
     let mut url = url;
     if url.find("lh3.googleusercontent.com").is_some() {
         url.push('0');
     }
-    let response = ureq::get(&url).call()?;
+    
+    let client = reqwest::Client::new();
+    let response = client.get(&url).send().await?;
     log::info!("Getting image from {}", url);
-    // Read response body into a Vec<u8>
-    let mut buffer = Vec::new();
-    response.into_reader().read_to_end(&mut buffer)?;
+    
+    // Get bytes from response
+    let buffer = response.bytes().await?;
 
     // Convert to image buffer with proper error handling
     let img = ImageReader::new(Cursor::new(buffer))
@@ -34,4 +36,5 @@ pub fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
     pixel_buffer.make_mut_bytes().copy_from_slice(&rgba_img.into_raw());
     
     Ok(Image::from_rgba8(pixel_buffer))
+
 }
