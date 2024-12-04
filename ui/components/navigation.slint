@@ -1,4 +1,4 @@
-import { Palette, HorizontalBox, ProgressIndicator, VerticalBox } from "std-widgets.slint";
+import { Palette, HorizontalBox, ProgressIndicator, VerticalBox, Button, StandardButton } from "std-widgets.slint";
 import { AudioState } from "playback.slint";
 
 export component TopBar inherits Rectangle {
@@ -8,6 +8,25 @@ export component TopBar inherits Rectangle {
 
     HorizontalBox {
         padding: 7.5px;
+        if AudioState.current-view != 0: Rectangle {
+            background: back_touch.pressed ? Palette.selection-background : Palette.alternate-background;
+            padding: 10px;
+            border-radius: 5px;
+            width: 40px;
+            height: 40px;
+            Text {
+                horizontal-alignment: TextHorizontalAlignment.left;
+                text: "<";
+                font-size: 25px;
+                font-weight: 700;
+            }
+            back_touch := TouchArea {
+                clicked => {
+                    AudioState.go-to-previous-page();
+                }
+            }
+        }
+        
         if !search : Text {
             horizontal-alignment: TextHorizontalAlignment.left;
             text: AudioState.page-name;
@@ -29,6 +48,7 @@ export component TopBar inherits Rectangle {
                 accepted => {
                     AudioState.on-search-clicked(self.text);
                     search = false;
+                    AudioState.add-previous-page(AudioState.current-view);
                     AudioState.current-view = 1;
                     AudioState.page-name = "Search: " + self.text;
                 }

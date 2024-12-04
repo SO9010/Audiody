@@ -5,6 +5,7 @@ use serde_json::json;
 use ureq::{Agent, Request, Response};
 use scraper::{Html, Selector};
 
+#[derive(Debug, Clone)]
 pub struct LibriVoxClient {
     base_url: String,
 }
@@ -57,7 +58,7 @@ impl LibriVoxClient {
             let title = title_element
                 .map(|e| e.text().collect::<String>().trim().to_string())
                 .unwrap_or_default();
-            let book_url = title_element
+            let mut book_url = title_element
                 .and_then(|e| e.value().attr("href"))
                 .unwrap_or("")
                 .to_string();
@@ -93,7 +94,10 @@ impl LibriVoxClient {
                 title,
                 description: "".to_string(),
                 author,
-                url: book_url,
+                url: {
+                    book_url.remove(0);
+                    format!("{}{}", self.base_url, book_url)
+                },
                 image_URL: cover_url,
                 chapter_urls: vec![],
                 chapter_durations: vec![],
@@ -104,10 +108,6 @@ impl LibriVoxClient {
     }
     
     pub fn get_book(&self, url: String) -> Result<Book, ureq::Error> {
-        let mut url = url;
-        url.remove(0);
-        let url = format!("{}{}", self.base_url, url);
-
         let body = ureq::get(&url)
             .call().unwrap()
             .into_string()?;

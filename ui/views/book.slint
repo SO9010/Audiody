@@ -1,23 +1,53 @@
+import { CoverImage } from "../components/book.slint";
 import { AudioState } from "../components/playback.slint";
-import { VerticalBox, ScrollView } from "std-widgets.slint";
+import { VerticalBox, ScrollView, HorizontalBox, Palette } from "std-widgets.slint";
 
 export component BookDetail inherits Rectangle {
     ScrollView {
+        viewport-height: root.height * 1.5;
         Rectangle {
             VerticalBox {
-                Image {
-                    width: root.width;
-                    height: root.width;
-                    image-fit: ImageFit.fill;
-                    source: AudioState.book-view.image;
+                CoverImage {
+                    src: AudioState.book-view.image;
                 }
                 Text {
+                    font-size: 20px;
+                    font-weight: 500;
                     text: AudioState.book-view.title;
+                    wrap: word-wrap;
+                }
+                
+                Text {
+                    font-size: 20px;
+                    font-weight: 500;
+                    text: AudioState.book-view.author;
+                    wrap: word-wrap;
                 }
                 Text {
-                    text: AudioState.book-view.author;
+                    font-size: 15px;
+                    font-weight: 500;
+                    text: AudioState.book-view.description;
                 }
-
+                for chapter[i] in AudioState.book-view.chapter-durations: Rectangle {
+                    height: 25px;
+                    background: Palette.alternate-background;
+                    padding: 5px;
+                    border-radius: 5px;
+                    HorizontalBox {
+                        Text {
+                            text: chapter;
+                            font-size: 15px;
+                        }
+                        Text {
+                            text: AudioState.book-view.chapter-urls[i];
+                            font-size: 15px;
+                        }
+                        Text {
+                            text: AudioState.book-view.chapter-reader[i];
+                            font-size: 15px;
+                        }
+                    }
+                }
             }
         }
     }

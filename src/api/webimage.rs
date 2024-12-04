@@ -1,9 +1,6 @@
 use slint::{Image, SharedPixelBuffer, Rgba8Pixel};
 use std::io::Cursor;
 use image::io::Reader as ImageReader;
-use ureq::{Agent, Request, Response};
-
-use super::types::AudiodyError;
 
 pub async fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
     // Fetch the image data from URL using async client

@@ -13,13 +13,14 @@ export global AudioState  {
 
     // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
     in-out property <int> current-view: 0;
-    in-out property <[int]> previous-views: [];
     
     callback toggle-pause();
     toggle-pause => {
         paused = !paused;
     }
 
+    callback go-to-previous-page();
+    callback add-previous-page(int);
     callback skip-forward();
     callback skip-backward();
     callback on-pause-clicked();
