@@ -40,19 +40,3 @@ pub struct Book {
     pub image_URL: String,
     // pub saved in drive
 }
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Reader {
-    #[serde(rename = "reader_id")]
-    pub reader_id: String,
-    #[serde(rename = "display_name")]
-    pub display_name: Option<String>,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Genre {
-    pub id: String,
-    pub name: String,
-}

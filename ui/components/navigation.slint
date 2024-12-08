@@ -8,7 +8,7 @@ export component TopBar inherits Rectangle {
 
     HorizontalBox {
         padding: 7.5px;
-        if AudioState.current-view != 0: Rectangle {
+        if AudioState.current-view != 0 && AudioState.current-view != 99: Rectangle {
             background: back_touch.pressed ? Palette.selection-background : Palette.alternate-background;
             padding: 10px;
             border-radius: 5px;

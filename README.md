@@ -2,6 +2,11 @@
 
 **Audiody** is an audiobook and podcast listening application, prioritizing audiobooks while offering a seamless experience for podcast enthusiasts. This project is in its early stages, but it aims to become a go-to app for audiobook and podcast lovers.
 
+## Usage  (not true for this project yet)
+To run the app, you currently need to create an API Key yourself. Don't worry, the Drive API is completely free. For that, you need a Google account. If you have that on hand, go to the Google Cloud Console and create or select a project.
+After that, select the Google Drive API in the API Library and click "Activate". As soon as it's active, you can visit the Drive API Overview where you can select "Credentials" and then create a new set of credentials.
+For the credentials type, you have to select "OAuth Client ID" and the application type will be "Desktop App". You can choose the name as you want. Now that you have valid credentials for the API, please click the Download button to the right to download the client credentials file. You need to place this as clientCredentials.json in the directory where you have your local copy of gdrivefs-rust.
+
 ## Goals and Features
 
 - **Audiobook and Podcast Integration**

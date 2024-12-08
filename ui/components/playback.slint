@@ -2,6 +2,7 @@ import { Palette, ProgressIndicator, TimePickerPopup, HorizontalBox, VerticalBox
 import { BookItem, CoverImage } from "book.slint";
 
 export global AudioState  {
+    in-out property <bool> logged-in: true;
     in-out property <bool> playing: true;
     in-out property <bool> paused: false;
     in-out property <float> timing: 30.0;
@@ -15,15 +16,11 @@ export global AudioState  {
     in-out property <int> current-view: 0;
     
     callback toggle-pause();
-    toggle-pause => {
-        paused = !paused;
-    }
 
     callback go-to-previous-page();
     callback add-previous-page(int);
     callback skip-forward();
     callback skip-backward();
-    callback on-pause-clicked();
     callback on-search-clicked(string);
     callback on-book-view(string);
 }
@@ -38,6 +35,7 @@ export component controls inherits Rectangle {
             height: 45px;
             width: 45px;
             touch1 := TouchArea {
+                clicked => { AudioState.skip-backward(); }
             }
             Image {
                 source: @image-url("../img/skip-previous-svgrepo-com.svg");
@@ -51,7 +49,8 @@ export component controls inherits Rectangle {
             width: 45px;
             touch2 := TouchArea {
                 clicked => {
-                    AudioState.on-pause-clicked();
+                    AudioState.toggle-pause();
+                    AudioState.paused = !AudioState.paused;
                 }
             }
             Image {

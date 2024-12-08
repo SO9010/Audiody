@@ -23,11 +23,7 @@ export component BookDetail inherits Rectangle {
                     text: AudioState.book-view.author;
                     wrap: word-wrap;
                 }
-                Text {
-                    font-size: 15px;
-                    font-weight: 500;
-                    text: AudioState.book-view.description;
-                }
+
                 for chapter[i] in AudioState.book-view.chapter-durations: Rectangle {
                     height: 25px;
                     background: Palette.alternate-background;

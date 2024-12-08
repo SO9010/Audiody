@@ -8,5 +8,7 @@ pub mod thoughtaudio;
 pub mod webimage;
 pub mod yt;
 
+pub mod goauth;
+
 pub mod webapi;
 pub mod types;

@@ -3,7 +3,6 @@ use std::io::Cursor;
 use image::io::Reader as ImageReader;
 
 pub async fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
-    // Fetch the image data from URL using async client
     let mut url = url;
     if url.find("lh3.googleusercontent.com").is_some() {
         url.push('0');
@@ -33,5 +32,4 @@ pub async fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Err
     pixel_buffer.make_mut_bytes().copy_from_slice(&rgba_img.into_raw());
     
     Ok(Image::from_rgba8(pixel_buffer))
-
 }

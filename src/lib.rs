@@ -1,8 +1,18 @@
-use std::{rc::Rc, vec};
+use std::sync::mpsc;
+use std::{rc::Rc, sync::Arc, thread, vec};
+use audio::audios::AudioService;
 use slint::{ComponentHandle, SharedString, VecModel};
+
 pub mod api;
+pub mod audio;
+
 use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}, webapi::WebApiClient, webimage::url_to_buffer, yt::{self, YouTubeClient}};
-use tokio::runtime::Runtime; // 0.3.5
+use tokio::{runtime::Runtime, sync::{broadcast, Mutex}}; // 0.3.5
+use std::fs::File;
+use std::io::BufReader;
+use std::time::Duration;
+use rodio::{Decoder, OutputStream, Sink};
+use rodio::source::{SineWave, Source};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -26,7 +36,7 @@ fn init() -> State {
 
     let main_window = AppWindow::new().unwrap();
     let audio_state = main_window.global::<AudioState>();
-
+    let audio_service = AudioService::new();
     let webapi_client = WebApiClient::new();
     // Implement populating the books one by one do then it looks more dynamic and doesnt just wait ages
     // At somepoint we want to implement multi threading so that the requests dont get int the way of the UI
@@ -45,7 +55,6 @@ fn init() -> State {
         }   
     });
 
-    let main_window_weak = main_window.as_weak();
     let previous_views_clone = previous_views.clone();
     audio_state.on_add_previous_page(move |page| {
         previous_views_clone.borrow_mut().push(page);
@@ -70,8 +79,29 @@ fn init() -> State {
     });
 
     let main_window_weak = main_window.as_weak();
-    let webapi_client = WebApiClient::new();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_toggle_pause(move || {
+        if let Some(main_window) = main_window_weak.upgrade() {
+            if !main_window.global::<AudioState>().get_paused() {
+                audio_service_clone.play();
+            } else {
+                audio_service_clone.pause();
+            }
+        }
+    });
 
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_skip_backward(move || {
+        audio_service_clone.seek_relative(-10);
+    });
+
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_skip_forward(move || {
+            audio_service_clone.seek_relative(10);
+    });
+
+    let main_window_weak = main_window.as_weak();
+    let webapi_client = WebApiClient::new();
     audio_state.on_on_book_view(move |bookURL| {
         // We also need to implement caching!
         let main_window_weak = main_window_weak.clone();
@@ -98,6 +128,7 @@ fn init() -> State {
 
     State { main_window }
 }
+
 #[cfg(target_os = "android")]#[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {
     use slint::android::android_activity::{MainEvent, PollEvent};
