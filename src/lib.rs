@@ -33,7 +33,6 @@ fn init() -> State {
     let main_window = AppWindow::new().unwrap();
     let audio_state = main_window.global::<AudioState>();
     let audio_service = AudioService::new();
-    audio_service.start("books/republic_version_2_1310_librivox/republic_01_plato_64kb.mp3".to_string());
 
     let webapi_client = WebApiClient::new();
     // Implement populating the books one by one do then it looks more dynamic and doesnt just wait ages
