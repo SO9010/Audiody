@@ -1,4 +1,4 @@
-import { Palette, ProgressIndicator, TimePickerPopup, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { Palette, ProgressIndicator, TimePickerPopup, HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
 import { BookItem, CoverImage } from "book.slint";
 
 export global AudioState  {
@@ -108,99 +108,91 @@ export component PlayingBar inherits Rectangle {
     }
 }
 export component PlayingWindow inherits Rectangle {
-    Rectangle {
-        border-top-left-radius: 15px;
-        border-radius: 0px;
-        background: Palette.alternate-background;
-        VerticalBox {
-            padding: 10px;
-            Rectangle {
-                clip: true;
-                border-radius: 5px;
+    border-top-left-radius: 15px;
+    border-radius: 0px;
+    background: Palette.alternate-background;
+    VerticalBox {
+        padding: 10px;
+        Rectangle {
+            clip: true;
+            border-radius: 5px;
+            height: root.width - 20px;
+            Image {
                 height: root.width - 20px;
-                Image {
-                    height: root.width - 20px;
-                    image-fit: ImageFit.contain;
-                    source: AudioState.now-playing.image;
-                }
+                image-fit: ImageFit.contain;
+                source: AudioState.now-playing.image;
             }
-            // Placeholder for the time
-            ProgressIndicator { 
-                progress: AudioState.timing;
-            }
-            Text {
-                text: AudioState.now-playing.title;
-                font-size: 25px;
-                horizontal-alignment: center;
+        }
+        // Placeholder for the time
+        ProgressIndicator { 
+            progress: AudioState.timing;
+        }
+        Text {
+            text: AudioState.now-playing.title;
+            font-size: 25px;
+            horizontal-alignment: center;
 
-                //text: root.Name;
-            }
-            Text {
-                text: AudioState.now-playing.description;
-                font-size: 15px;
-                wrap: word-wrap;
-                horizontal-alignment: center;
+            //text: root.Name;
+        }
+
+        Rectangle {}
+        HorizontalLayout {
+            padding: 0px;
+            padding-bottom: 7.5px;
+            Rectangle {
+                height: 45px;
+                width: 45px;
+                touch1 := TouchArea {
+                    clicked => {
+                        time-picker.show();
+                    }
+                }
+                time-picker := TimePickerPopup {
+                    width: 360px;
+                    height: 524px;
+                    close-on-click: false;
+                    y: -450px;
+                    canceled => {
+                        time-picker.close();
+                    }
                 
-                //text: root.Name;
+                    accepted(time) => {
+                        debug(time);
+                        time-picker.close();
+                    }
+                }
+                Image {
+                    source: @image-url("../img/moon-fog-svgrepo-com.svg");
+                    colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
+                    height: 45px;
+                    width: 45px;
+                }
             }
-            Rectangle {}
-            HorizontalLayout {
-                padding: 0px;
-                padding-bottom: 7.5px;
-                Rectangle {
-                    height: 45px;
-                    width: 45px;
-                    touch1 := TouchArea {
-                        clicked => {
-                            time-picker.show();
-                        }
-                    }
-                    time-picker := TimePickerPopup {
-                        width: 360px;
-                        height: 524px;
-                        close-on-click: false;
-                        y: -450px;
-                        canceled => {
-                            time-picker.close();
-                        }
-                    
-                        accepted(time) => {
-                            debug(time);
-                            time-picker.close();
-                        }
-                    }
-                    Image {
-                        source: @image-url("../img/moon-fog-svgrepo-com.svg");
-                        colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
-                        height: 45px;
-                        width: 45px;
-                    }
+            Rectangle {
+                controls {
+                    y: -2.43px;
                 }
-                Rectangle {
-                    controls {
-                        y: -2.43px;
-                    }
+            }
+            Rectangle {
+                height: 45px;
+                width: 45px;
+                Text {
+                    text: AudioState.speed + "x";
+                    font-size: 25px;
+                    font-weight: 600;
+                    color: touch4.pressed ? Palette.selection-background : Palette.foreground;
                 }
-                Rectangle {
-                    height: 45px;
-                    width: 45px;
-                    Text {
-                        text: AudioState.speed + "x";
-                        font-size: 25px;
-                        font-weight: 600;
-                        color: touch4.pressed ? Palette.selection-background : Palette.foreground;
-                    }
-                    touch4 := TouchArea {
-                        clicked => {
-                            if (AudioState.speed < 2.0) {
-                                AudioState.speed += 0.25;
-                            } else {
-                                AudioState.speed = 0.75;
-                            }
-                            AudioState.change-speed();
+                touch4 := TouchArea {
+                    clicked => {
+                        if (AudioState.speed < 2.0) {
+                            AudioState.speed += 0.25;
+                        } else {
+                            AudioState.speed = 0.75;
                         }
+                        AudioState.change-speed();
                     }
                 }
             }
         }
-    }}
+    }
+}
