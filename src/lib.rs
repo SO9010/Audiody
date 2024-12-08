@@ -1,18 +1,14 @@
-use std::sync::mpsc;
-use std::{rc::Rc, sync::Arc, thread, vec};
+use std::{rc::Rc, vec};
 use audio::audios::AudioService;
-use slint::{ComponentHandle, SharedString, VecModel};
+use slint::ComponentHandle;
 
 pub mod api;
 pub mod audio;
+pub mod storage;
 
-use api::{librivox::{self, LibriVoxClient}, types::{Book, SearchQuery}, webapi::WebApiClient, webimage::url_to_buffer, yt::{self, YouTubeClient}};
-use tokio::{runtime::Runtime, sync::{broadcast, Mutex}}; // 0.3.5
-use std::fs::File;
-use std::io::BufReader;
-use std::time::Duration;
-use rodio::{Decoder, OutputStream, Sink};
-use rodio::source::{SineWave, Source};
+use api::{webapi::WebApiClient, webimage::url_to_buffer};
+use storage::save::download_audio;
+use tokio::runtime::Runtime; // 0.3.5
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -37,9 +33,11 @@ fn init() -> State {
     let main_window = AppWindow::new().unwrap();
     let audio_state = main_window.global::<AudioState>();
     let audio_service = AudioService::new();
+    audio_service.start("books/republic_version_2_1310_librivox/republic_01_plato_64kb.mp3".to_string());
+
     let webapi_client = WebApiClient::new();
     // Implement populating the books one by one do then it looks more dynamic and doesnt just wait ages
-    // At somepoint we want to implement multi threading so that the requests dont get int the way of the UI
+    // At somepoint we want to implement multi threading so that* the requests dont get int the way of the UI
     let previous_views = Rc::new(std::cell::RefCell::new(vec![0]));
     
     let main_window_weak = main_window.as_weak();
@@ -47,7 +45,7 @@ fn init() -> State {
     audio_state.on_go_to_previous_page(move || {
         if let Some(main_window) = main_window_weak.upgrade() {
             if let Some(prev_view) = previous_views_clone.borrow_mut().pop() {
-                if (prev_view == 0) {
+                if prev_view == 0 {
                     main_window.global::<AudioState>().set_page_name("Audiody".into());
                 }
                 main_window.global::<AudioState>().set_current_view(prev_view.into())
@@ -65,7 +63,7 @@ fn init() -> State {
     audio_state.on_on_search_clicked(move |query| {
         // We also need to implement caching!
         let books = Runtime::new().unwrap().block_on(webapi_client.clone().search(query.to_string())).unwrap();
-        let mut libri_book_items: Vec<BookItem>; 
+        let libri_book_items: Vec<BookItem>; 
         libri_book_items = books[0].clone().into_iter().map(|book| BookItem {title:book.title.into(),author:book.author.into(),description:book.description.clone().into(),book_url:book.url.into(),saved:book.saved,image:Runtime::new().unwrap().block_on(url_to_buffer(book.image_URL)).unwrap(), chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])), chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])) }).collect();
         let libri_book_model = Rc::new(slint::VecModel::<BookItem>::from(libri_book_items));
 
@@ -82,7 +80,7 @@ fn init() -> State {
     let audio_service_clone = audio_service.clone();
     audio_state.on_toggle_pause(move || {
         if let Some(main_window) = main_window_weak.upgrade() {
-            if !main_window.global::<AudioState>().get_paused() {
+            if main_window.global::<AudioState>().get_paused() {
                 audio_service_clone.play();
             } else {
                 audio_service_clone.pause();
@@ -101,12 +99,63 @@ fn init() -> State {
     });
 
     let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_change_speed(move || {
+        if let Some(main_window) = main_window_weak.upgrade() {
+            
+            audio_service_clone.set_speed(main_window.global::<AudioState>().get_speed());
+        }
+    });
+
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_chapter_download_and_play(move |book, chapter, URL| {
+        if let Some(main_window) = main_window_weak.upgrade() {
+            match download_audio(&book, chapter, &URL) {
+            Ok(path_buf) => {
+                // Convert the `PathBuf` to a `&str` (ensure it is valid UTF-8)
+                if let Some(path_str) = path_buf.to_str() {
+                    println!("Downloaded audio path: {}", path_str);
+                    audio_service_clone.start(path_str.to_string());
+                    audio_service_clone.play();
+                    main_window.global::<AudioState>().set_paused(false);
+                } else {
+                    eprintln!("Error: Path contains invalid UTF-8");
+                }
+            }
+            Err(e) => {
+                eprintln!("Error downloading audio: {}", e);
+            }
+        }
+    }
+    });
+
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_chapter_download(move |book, chapter, URL| {
+        match download_audio(&book, chapter, &URL) {
+            Ok(path_buf) => {
+                // Convert the `PathBuf` to a `&str` (ensure it is valid UTF-8)
+                if let Some(path_str) = path_buf.to_str() {
+                    println!("Downloaded audio path: {}", path_str);
+                } else {
+                    eprintln!("Error: Path contains invalid UTF-8");
+                }
+            }
+            Err(e) => {
+                eprintln!("Error downloading audio: {}", e);
+            }
+        }
+    });
+
+    let main_window_weak = main_window.as_weak();
     let webapi_client = WebApiClient::new();
     audio_state.on_on_book_view(move |bookURL| {
         // We also need to implement caching!
         let main_window_weak = main_window_weak.clone();
     
         let book = Runtime::new().unwrap().block_on(webapi_client.clone().get_book(bookURL.to_string())).unwrap();
+        log::info!("book_item.image: {}", book.chapter_durations.len());
         
         let book_item: BookItem = BookItem {
             title: book.title.into(),
@@ -116,9 +165,17 @@ fn init() -> State {
             saved: book.saved,
             image: Runtime::new().unwrap().block_on(url_to_buffer(book.image_URL)).unwrap(),
             // Find a better way of doing this
-            chapter_urls: slint::ModelRc::new(slint::VecModel::from(book.chapter_urls.into_iter().map(|url| url.into()).collect::<Vec<slint::SharedString>>())),
-            chapter_durations: slint::ModelRc::new(slint::VecModel::from(book.chapter_durations.into_iter().map(|dur| dur.into()).collect::<Vec<slint::SharedString>>())),
-            chapter_reader: slint::ModelRc::new(slint::VecModel::from(book.chapter_reader.into_iter().map(|reader| reader.into()).collect::<Vec<slint::SharedString>>()))
+            chapter_urls: slint::ModelRc::new(slint::VecModel::from(
+                book.chapter_urls.into_iter().map(|url| url.into()).collect::<Vec<slint::SharedString>>()
+            )),
+            
+            chapter_durations: slint::ModelRc::new(slint::VecModel::from(
+                book.chapter_durations.into_iter().map(|dur| dur.into()).collect::<Vec<slint::SharedString>>(),
+            )),
+            
+            chapter_reader: slint::ModelRc::new(slint::VecModel::from(
+                book.chapter_reader.into_iter().map(|reader| reader.into()).collect::<Vec<slint::SharedString>>(),
+            )),
         };
 
         if let Some(main_window) = main_window_weak.upgrade() {
@@ -128,7 +185,6 @@ fn init() -> State {
 
     State { main_window }
 }
-
 #[cfg(target_os = "android")]#[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {
     use slint::android::android_activity::{MainEvent, PollEvent};

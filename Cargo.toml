@@ -29,6 +29,7 @@ rusty_ytdl = "0.7.4"
 rodio = "0.20.1"
 opendal = "0.50.2"
 oauth2 = "4.4.2"
+dirs = "5.0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { version = "0.2" }

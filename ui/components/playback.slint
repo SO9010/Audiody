@@ -3,26 +3,36 @@ import { BookItem, CoverImage } from "book.slint";
 
 export global AudioState  {
     in-out property <bool> logged-in: true;
-    in-out property <bool> playing: true;
-    in-out property <bool> paused: false;
+    in-out property <bool> playing: false;
+    in-out property <bool> paused: true;
     in-out property <float> timing: 30.0;
     in-out property <string> page-name: "Audiody";
+    in-out property <float> speed: 1.0;
 
     in-out property <[BookItem]> search-libi: [];
     in-out property <[BookItem]> search-yt: [];
     in-out property <BookItem> book-view;
 
+    in-out property <BookItem> now-playing;
     // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
-    in-out property <int> current-view: 0;
     
+    // Playback control
     callback toggle-pause();
-
-    callback go-to-previous-page();
-    callback add-previous-page(int);
     callback skip-forward();
     callback skip-backward();
+    callback change-speed();
+
+    // Paging
+    callback go-to-previous-page();
+    callback add-previous-page(int);
+    in-out property <int> current-view: 0;
+
     callback on-search-clicked(string);
     callback on-book-view(string);
+
+    /// Book, Chapter, URL 
+    callback chapter-download-and-play(string, int, string);
+    callback chapter-download(string, int, string);
 }
 
 
@@ -54,7 +64,7 @@ export component controls inherits Rectangle {
                 }
             }
             Image {
-                source: AudioState.paused ? @image-url("../img/pause-svgrepo-com.svg") : @image-url("../img/play-svgrepo-com.svg");
+                source: AudioState.paused ? @image-url("../img/play-svgrepo-com.svg") : @image-url("../img/pause-svgrepo-com.svg");
                 colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
                 height: 45px;
                 width: 45px;
@@ -87,7 +97,7 @@ export component PlayingBar inherits Rectangle {
             Image {
                 height: 50px;
                 image-fit: ImageFit.fill;
-                source: @image-url("../img/republic2_1310.jpg");
+                source: AudioState.now-playing.image;
             }
         }
         Rectangle {
@@ -107,11 +117,11 @@ export component PlayingWindow inherits Rectangle {
             Rectangle {
                 clip: true;
                 border-radius: 5px;
-                height: root.width -20px ;
+                height: root.width - 20px;
                 Image {
-                    height: root.width -20px ;
+                    height: root.width - 20px;
                     image-fit: ImageFit.contain;
-                    source: @image-url("../img/republic2_1310.jpg");
+                    source: AudioState.now-playing.image;
                 }
             }
             // Placeholder for the time
@@ -119,14 +129,14 @@ export component PlayingWindow inherits Rectangle {
                 progress: AudioState.timing;
             }
             Text {
-                text: "Plato The Republic";
+                text: AudioState.now-playing.title;
                 font-size: 25px;
                 horizontal-alignment: center;
 
                 //text: root.Name;
             }
             Text {
-                text: "Plato The Republic this is a description that describes the audio book, I should be scrolable!";
+                text: AudioState.now-playing.description;
                 font-size: 15px;
                 wrap: word-wrap;
                 horizontal-alignment: center;
@@ -175,16 +185,22 @@ export component PlayingWindow inherits Rectangle {
                     height: 45px;
                     width: 45px;
                     Text {
-                        text: "1x";
+                        text: AudioState.speed + "x";
                         font-size: 25px;
                         font-weight: 600;
                         color: touch4.pressed ? Palette.selection-background : Palette.foreground;
                     }
                     touch4 := TouchArea {
+                        clicked => {
+                            if (AudioState.speed < 2.0) {
+                                AudioState.speed += 0.25;
+                            } else {
+                                AudioState.speed = 0.75;
+                            }
+                            AudioState.change-speed();
+                        }
                     }
                 }
             }
-
         }
-    }
-}
+    }}

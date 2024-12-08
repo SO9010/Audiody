@@ -7,6 +7,7 @@ export component BookDetail inherits Rectangle {
         viewport-height: root.height * 1.5;
         Rectangle {
             VerticalBox {
+                spacing: 10px;
                 CoverImage {
                     src: AudioState.book-view.image;
                 }
@@ -16,33 +17,59 @@ export component BookDetail inherits Rectangle {
                     text: AudioState.book-view.title;
                     wrap: word-wrap;
                 }
-                
-                Text {
-                    font-size: 20px;
-                    font-weight: 500;
-                    text: AudioState.book-view.author;
-                    wrap: word-wrap;
-                }
-
                 for chapter[i] in AudioState.book-view.chapter-durations: Rectangle {
                     height: 25px;
-                    background: Palette.alternate-background;
+                    background: download.pressed ? Palette.selection-foreground: Palette.alternate-background;
                     padding: 5px;
                     border-radius: 5px;
                     HorizontalBox {
-                        Text {
-                            text: chapter;
-                            font-size: 15px;
+                        padding: 0px;
+                        spacing: 1px;
+                        Rectangle {
+                            height: 25px;
+                            width: 25px;
+                            Image {
+                                height: 25px;
+                                width: 25px;
+                                source: @image-url("../img/download-svgrepo-com.svg");
+                                colorize: download.pressed ? Palette.selection-foreground: Palette.alternate-foreground;
+                            }
+                            download := TouchArea {
+                                clicked => {
+                                    // downlaod the audio
+                                    AudioState.chapter-download(AudioState.book-view.title, i, AudioState.book-view.chapter-urls[i]);
+                                }
+                            }
                         }
                         Text {
-                            text: AudioState.book-view.chapter-urls[i];
+                            text: AudioState.book-view.chapter-durations[i];
                             font-size: 15px;
                         }
                         Text {
                             text: AudioState.book-view.chapter-reader[i];
                             font-size: 15px;
                         }
+                        Rectangle {
+                            height: 25px;
+                            width: 25px;
+                            Image {
+                                height: 25px;
+                                width: 25px;
+                                source: @image-url("../img/play-svgrepo-com.svg");
+                                colorize: play.pressed ? Palette.selection-foreground: Palette.alternate-foreground;
+
+                            }
+                            play := TouchArea {
+                                clicked => {
+                                    // downlaod the audio
+                                    AudioState.chapter-download-and-play(AudioState.book-view.title, i, AudioState.book-view.chapter-urls[i]);
+                                    AudioState.now-playing = AudioState.book-view;
+                                    AudioState.playing = true;
+                                }
+                            }
+                        }
                     }
+                    
                 }
             }
         }

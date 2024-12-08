@@ -3,7 +3,6 @@ use std::vec;
 use crate::api::types::*;
 use rusty_ytdl::Video;
 use rusty_ytdl::search::{SearchResult, YouTube};
-use rusty_ytdl::{choose_format,VideoOptions};
 
 #[derive(Debug, Clone)]
 pub struct YouTubeClient {
@@ -64,4 +63,9 @@ impl YouTubeClient {
             image_URL: video_info.video_details.thumbnails[0].url.clone(),
         })
     }
+    /*
+    pub async fn get_chapter(&self, url: String) -> Result<Book, ureq::Error> {
+    
+    }
+    */
 }

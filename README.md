@@ -45,7 +45,7 @@ For the credentials type, you have to select "OAuth Client ID" and the applicati
 - Integrate Librivox API for audiobooks.
 - Create a basic UI to list, search, and play audiobooks.
 - Add Google Drive connectivity for user-uploaded content.
-
+- Get it to work on linux
 ### Phase 2: Enhanced Features
 - Implement chapter timestamps and book tracking.
 - Add YouTube podcast support.

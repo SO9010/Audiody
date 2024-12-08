@@ -2,7 +2,6 @@ use std::vec;
 
 use crate::api::types::*;
 use serde_json::json;
-use ureq::{Agent, Request, Response};
 use scraper::{Html, Selector};
 
 #[derive(Debug, Clone)]
@@ -166,7 +165,7 @@ impl LibriVoxClient {
                     .next()
                     .map(|td| td.text().collect::<String>().trim().to_string());
 
-                match (link, duration, reader) {
+                    match (link, duration, reader) {
                     (Some(l), Some(d), Some(r)) => Some((l, d, r)),
                     _ => None
                 }

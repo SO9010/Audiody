@@ -14,6 +14,7 @@ pub struct AudioService {
 
 // Commands for audio control
 enum AudioCommand {
+    Start(String),
     Play,
     Pause,
     Speed(f32),
@@ -35,12 +36,6 @@ impl AudioService {
         thread::spawn(move || {
             let (_stream, handle) = OutputStream::try_default().unwrap();
             let sink = Sink::try_new(&handle).unwrap();
-
-            // Load the audio file
-            let file = BufReader::new(File::open("books/republic_version_2_1310_librivox/republic_01_plato_64kb.mp3").unwrap());
-            let source = Decoder::new(file).unwrap();
-            sink.append(source);
-            sink.pause(); // Start paused
             *sink_clone.lock().unwrap() = Some(sink);
 
             // Wait for commands
@@ -49,6 +44,15 @@ impl AudioService {
                     *playback_distance_clone.lock().unwrap() = sink.get_pos().as_secs();
                 }
                 match command_rx_clone.lock().unwrap().recv() {
+                    Ok(AudioCommand::Start(path)) => {
+                        if let Some(sink) = sink_clone.lock().unwrap().as_ref() {
+                            let file = BufReader::new(File::open(path).unwrap());
+                            let source = Decoder::new(file).unwrap();
+                            sink.clear();
+                            sink.append(source);
+                            sink.pause(); 
+                        }
+                    }
                     Ok(AudioCommand::Play) => {
                         if let Some(sink) = sink_clone.lock().unwrap().as_ref() {
                             sink.play();
@@ -84,6 +88,12 @@ impl AudioService {
 
         Self { stream_handle, sink, command_tx, playback_distance }
     }
+
+    pub fn start(&self, path: String) {
+        // Send a signal to the audio thread to pause
+        self.command_tx.send(AudioCommand::Start(path)).unwrap();
+    }
+
     pub fn pause(&self) {
         // Send a signal to the audio thread to pause
         self.command_tx.send(AudioCommand::Pause).unwrap();

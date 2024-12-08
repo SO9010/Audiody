@@ -1,14 +1,3 @@
-use oauth2::{
-    basic::BasicClient, reqwest::http_client, AuthUrl, AuthorizationCode, ClientId, CsrfToken,
-    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
-};
-use std::{
-    io::{BufRead, BufReader, Write},
-    net::TcpStream,
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
-    sync::mpsc,
-    time::Duration,
-};
 
 
 pub const AUTH_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth";
