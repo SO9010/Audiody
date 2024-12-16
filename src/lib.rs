@@ -1,4 +1,5 @@
-use std::{rc::Rc, vec};
+use std::thread::{self, Thread};
+use std::{path::PathBuf, rc::Rc, vec};
 use audio::audios::AudioService;
 use slint::ComponentHandle;
 
@@ -9,6 +10,9 @@ pub mod storage;
 use api::{webapi::WebApiClient, webimage::url_to_buffer};
 use storage::save::download_audio;
 use tokio::runtime::Runtime; // 0.3.5
+
+use yt_dlp::Youtube;
+use yt_dlp::fetcher::deps::Libraries;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -29,6 +33,30 @@ pub fn main() {
 fn init() -> State {
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
     console_error_panic_hook::set_once();
+
+    // YT-DLP download should only be ran once
+    // TODO: Make this a background task
+    // Downloading binaries
+    thread::spawn(|| {
+        let executables_dir = PathBuf::from("libs");
+        let output_dir = PathBuf::from("output");
+        log::info!("Downloading binaries");
+        Runtime::new().unwrap().block_on(Youtube::with_new_binaries(executables_dir, output_dir)).unwrap();
+    });
+    
+
+    /* Update the downloads 
+    let libraries_dir = PathBuf::from("libs");
+    let output_dir = PathBuf::from("output");
+    
+    let youtube = libraries_dir.join("yt-dlp");
+    let ffmpeg = libraries_dir.join("ffmpeg");
+    
+    let libraries = Libraries::new(youtube, ffmpeg);
+    let fetcher = Youtube::new(libraries, output_dir).unwrap();
+
+    Runtime::new().unwrap().block_on(fetcher.update_downloader()).unwrap();
+    */
 
     let main_window = AppWindow::new().unwrap();
     let audio_state = main_window.global::<AudioState>();
@@ -114,35 +142,33 @@ fn init() -> State {
             Ok(path_buf) => {
                 // Convert the `PathBuf` to a `&str` (ensure it is valid UTF-8)
                 if let Some(path_str) = path_buf.to_str() {
-                    println!("Downloaded audio path: {}", path_str);
+                    log::info!("Downloaded audio path: {}", path_str);
                     audio_service_clone.start(path_str.to_string());
                     audio_service_clone.play();
                     main_window.global::<AudioState>().set_paused(false);
                 } else {
-                    eprintln!("Error: Path contains invalid UTF-8");
+                    log::info!("Error: Path contains invalid UTF-8");
                 }
             }
             Err(e) => {
-                eprintln!("Error downloading audio: {}", e);
+                log::info!("Error downloading audio: {}", e);
             }
         }
     }
     });
 
-    let main_window_weak = main_window.as_weak();
-    let audio_service_clone = audio_service.clone();
     audio_state.on_chapter_download(move |book, chapter, URL| {
         match download_audio(&book, chapter, &URL) {
             Ok(path_buf) => {
                 // Convert the `PathBuf` to a `&str` (ensure it is valid UTF-8)
                 if let Some(path_str) = path_buf.to_str() {
-                    println!("Downloaded audio path: {}", path_str);
+                    log::info!("Downloaded audio path: {}", path_str);
                 } else {
-                    eprintln!("Error: Path contains invalid UTF-8");
+                    log::info!("Error: Path contains invalid UTF-8");
                 }
             }
             Err(e) => {
-                eprintln!("Error downloading audio: {}", e);
+                log::info!("Error downloading audio: {}", e);
             }
         }
     });

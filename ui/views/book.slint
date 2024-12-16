@@ -17,6 +17,18 @@ export component BookDetail inherits Rectangle {
                     text: AudioState.book-view.title;
                     wrap: word-wrap;
                 }
+                Rectangle {
+                    border-radius: 5px;
+                    background: downloadAll.pressed ? Palette.selection-background : Palette.alternate-background;
+                    Text {
+                        text: "Download";
+                    }
+                    downloadAll := TouchArea {
+                        clicked => { 
+                            AudioState.chapter-download(AudioState.book-view.title, 0, AudioState.book-view.book-url);
+                         }
+                    }
+                }
                 for chapter[i] in AudioState.book-view.chapter-durations: Rectangle {
                     height: 25px;
                     background: download.pressed ? Palette.selection-foreground: Palette.alternate-background;

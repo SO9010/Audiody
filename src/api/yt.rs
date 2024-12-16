@@ -1,8 +1,11 @@
+use std::path::PathBuf;
 use std::vec;
 
 use crate::api::types::*;
 use rusty_ytdl::Video;
 use rusty_ytdl::search::{SearchResult, YouTube};
+use yt_dlp::Youtube;
+use yt_dlp::fetcher::deps::Libraries;
 
 #[derive(Debug, Clone)]
 pub struct YouTubeClient {
@@ -63,9 +66,22 @@ impl YouTubeClient {
             image_URL: video_info.video_details.thumbnails[0].url.clone(),
         })
     }
-    /*
-    pub async fn get_chapter(&self, url: String) -> Result<Book, ureq::Error> {
+
+    pub async fn get_chapter(&self, url: String, path: String) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        log::info!("putting into: {}", path);
+        // https://github.com/boul2gom/yt-dlp
+        let libraries_dir = PathBuf::from("libs");
+        let output_dir = PathBuf::from("output");
     
+        let youtube = libraries_dir.join("yt-dlp");
+        let ffmpeg = libraries_dir.join("ffmpeg");
+    
+        let libraries = Libraries::new(youtube, ffmpeg);
+        let mut fetcher = Youtube::new(libraries, output_dir)?;
+
+        fetcher.output_dir = PathBuf::from(path.clone());
+        fetcher.download_audio_stream_from_url(url, "audio.mp3").await?;
+        
+        Ok(PathBuf::from(path))
     }
-    */
 }
