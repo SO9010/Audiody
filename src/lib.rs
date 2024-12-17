@@ -12,7 +12,6 @@ use storage::save::download_audio;
 use tokio::runtime::Runtime; // 0.3.5
 
 use yt_dlp::Youtube;
-use yt_dlp::fetcher::deps::Libraries;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -38,6 +37,7 @@ fn init() -> State {
     // TODO: Make this a background task
     // Downloading binaries
     thread::spawn(|| {
+        // change this to be in the home folder, or the normal place to install scripts!
         let executables_dir = PathBuf::from("libs");
         let output_dir = PathBuf::from("output");
         log::info!("Downloading binaries");
@@ -210,6 +210,7 @@ fn init() -> State {
 
     State { main_window }
 }
+
 #[cfg(target_os = "android")]#[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {
     use slint::android::android_activity::{MainEvent, PollEvent};

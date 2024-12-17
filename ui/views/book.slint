@@ -29,6 +29,20 @@ export component BookDetail inherits Rectangle {
                          }
                     }
                 }
+                Rectangle {
+                    border-radius: 5px;
+                    background: downloadAll.pressed ? Palette.selection-background : Palette.alternate-background;
+                    Text {
+                        text: "Download and play";
+                    }
+                    DownloadAllAndPlay := TouchArea {
+                        clicked => { 
+                            AudioState.chapter-download-and-play(AudioState.book-view.title, 0, AudioState.book-view.book-url);
+                            AudioState.now-playing = AudioState.book-view;
+                            AudioState.playing = true;
+                         }
+                    }
+                }
                 for chapter[i] in AudioState.book-view.chapter-durations: Rectangle {
                     height: 25px;
                     background: download.pressed ? Palette.selection-foreground: Palette.alternate-background;

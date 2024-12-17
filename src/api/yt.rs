@@ -1,11 +1,10 @@
-use std::path::PathBuf;
-use std::vec;
+use std::path::{Path, PathBuf};
+use std::{fs, vec};
+use std::process::{ Command, Stdio };
 
 use crate::api::types::*;
-use rusty_ytdl::Video;
+use rusty_ytdl::{Chapter, Video};
 use rusty_ytdl::search::{SearchResult, YouTube};
-use yt_dlp::Youtube;
-use yt_dlp::fetcher::deps::Libraries;
 
 #[derive(Debug, Clone)]
 pub struct YouTubeClient {
@@ -22,8 +21,7 @@ impl YouTubeClient {
     }
 }
 
-// https://librivox.app/search.jsp?search=marxism
-
+// Find a way to improve the image quality!
   impl YouTubeClient {
     pub async fn search(&self, query: String) -> Result<Vec<Book>, ureq::Error> {
         let results = self.youtube.search(query + " audiobook", None).await.unwrap();
@@ -67,21 +65,24 @@ impl YouTubeClient {
         })
     }
 
-    pub async fn get_chapter(&self, url: String, path: String) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        log::info!("putting into: {}", path);
-        // https://github.com/boul2gom/yt-dlp
+    pub async fn get_chapter(&self, url: String, path: String, chapter: i32) -> Result<PathBuf, Box<dyn std::error::Error>> {
         let libraries_dir = PathBuf::from("libs");
-        let output_dir = PathBuf::from("output");
-    
         let youtube = libraries_dir.join("yt-dlp");
-        let ffmpeg = libraries_dir.join("ffmpeg");
-    
-        let libraries = Libraries::new(youtube, ffmpeg);
-        let mut fetcher = Youtube::new(libraries, output_dir)?;
+        // NEED TO ADD PROGRESS BAR
+        Command::new(youtube)
+            .args(
+                &[
+                    "--extract-audio",
+                    "--audio-format",
+                    "mp3",
+                    "-o",
+                    &path.clone(),
+                    &url.clone(),
+                ]
+            )
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
 
-        fetcher.output_dir = PathBuf::from(path.clone());
-        fetcher.download_audio_stream_from_url(url, "audio.mp3").await?;
-        
         Ok(PathBuf::from(path))
-    }
-}
+    }}
