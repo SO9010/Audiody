@@ -1,1 +1,66 @@
+import { Button, VerticalBox, ScrollView, Palette ,ListView, HorizontalBox, GridBox } from "std-widgets.slint";
 import { AudioState } from "../components/playback.slint";
+
+export component HomeDetail inherits Rectangle {
+    property <length> item-width: 160px;
+    property <length> item-height: 215px;
+    property <length> item-padding: 10px;
+    property <int> item-count: AudioState.home-page-books.length;
+
+    VerticalBox {
+        Rectangle {
+            height: item-height + 50px;
+            width: root.width;
+            VerticalBox {
+                padding: 0px;
+                Text {
+                    text: "Saved Books";
+                    font-size: 20px;
+                }
+
+                ScrollView {
+                    viewport-width: (item-width + item-padding) * item-count;
+                    for book[i] in AudioState.home-page-books: Rectangle {
+                        x: i * (item-width + item-padding);
+
+                        width: item-width;
+                        height: item-height;
+                        border-radius: 15px;
+                        background: touch2.pressed ? Palette.selection-background : Palette.alternate-background;
+
+                        VerticalBox {
+                            alignment: center;
+                            spacing: 2.5px;
+                            Image {
+                                source: book.image;
+                                horizontal-alignment: center;
+                                width: 125px;
+                                height: 125px;
+                            }
+
+                            Text {
+                                text: book.title;
+                                font-size: 15px;
+                                font-weight: 700;
+                                wrap: word-wrap;
+                                height: 50px;
+                            }
+
+                            Text {
+                                text: book.author;
+                            }
+                        }
+
+                        touch2 := TouchArea {
+                            clicked => {
+                                AudioState.add-previous-page(AudioState.current-view);
+                                AudioState.on-book-view(book.book-url, book.title);
+                                AudioState.current-view = 5;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

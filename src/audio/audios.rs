@@ -126,7 +126,6 @@ impl AudioService {
     //}
     pub fn get_current_pos(&self, chapter_path: &str) -> u64 {
         // Send a signal to the audio thread to set the speed
-        let playback_distance = self.playback_distance.lock().unwrap();
-        playback_distance.clone()
+        self.playback_distance.lock().unwrap().clone()
     }
 }

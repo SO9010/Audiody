@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::{fs, vec};
+use std::{fs, thread, vec};
 use std::process::{ Command, Stdio };
 
 use crate::api::types::*;
@@ -65,16 +65,23 @@ impl YouTubeClient {
         })
     }
 
-    pub async fn get_chapter(&self, url: String, path: String, chapter: i32) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let libraries_dir = PathBuf::from("libs");
-        let youtube = libraries_dir.join("yt-dlp");
+    pub fn get_chapter(&self, url: String, path: String, chapter: i32) -> Result<(), Box<dyn std::error::Error>> {
+
         // NEED TO ADD PROGRESS BAR
-        Command::new(youtube)
+        thread::spawn(move || {
+            let libraries_dir = PathBuf::from("libs");
+            let youtube = libraries_dir.join("yt-dlp");
+
+            let output = Command::new(youtube)
             .args(
                 &[
-                    "--extract-audio",
-                    "--audio-format",
-                    "mp3",
+                    "--extract-audio",          // Extract audio only
+                    "--audio-format", "mp3",   // Set audio format to mp3
+                    "--write-auto-sub",        // Download auto-generated subtitles
+                    "--sub-lang", "en",        // Set subtitle language (change as needed)
+                    "-q",
+                    "--progress",
+                    "--write-thumbnail",       // Download the thumbnail
                     "-o",
                     &path.clone(),
                     &url.clone(),
@@ -82,7 +89,12 @@ impl YouTubeClient {
             )
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .status();
+            .output()
+            .expect("failed to execute process");
 
-        Ok(PathBuf::from(path))
+            log::info!("Finished downloading to {}, output message of: {:?}", path, output.status.code());
+        });
+        
+
+        Ok(())
     }}

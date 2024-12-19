@@ -2,32 +2,33 @@ import { Button, VerticalBox, ScrollView, Palette ,ListView, HorizontalBox, Grid
 import { AudioState } from "../components/playback.slint";
 
 export component SearchDetail inherits Rectangle {
-    property <length> item-width: 160px; 
+    property <length> item-width: 160px;
     property <length> item-height: 215px;
     property <length> item-padding: 10px;
     property <int> libre-item-count: AudioState.search-libi.length;
     property <int> youtube-item-count: AudioState.search-yt.length;
-    
+
     VerticalBox {
         Rectangle {
             height: item-height + 50px;
             width: root.width;
             VerticalBox {
                 padding: 0px;
-                Text{
+                Text {
                     text: "Libri";
                     font-size: 20px;
                 }
+
                 ScrollView {
                     viewport-width: (item-width + item-padding) * libre-item-count;
                     for book[i] in AudioState.search-libi: Rectangle {
                         x: i * (item-width + item-padding);
-    
+
                         width: item-width;
-                        height: item-height;                                
+                        height: item-height;
                         border-radius: 15px;
                         background: touch2.pressed ? Palette.selection-background : Palette.alternate-background;
-                        
+
                         VerticalBox {
                             alignment: center;
                             spacing: 2.5px;
@@ -37,6 +38,7 @@ export component SearchDetail inherits Rectangle {
                                 width: 125px;
                                 height: 125px;
                             }
+
                             Text {
                                 text: book.title;
                                 font-size: 15px;
@@ -44,14 +46,16 @@ export component SearchDetail inherits Rectangle {
                                 wrap: word-wrap;
                                 height: 50px;
                             }
+
                             Text {
                                 text: book.author;
                             }
                         }
+
                         touch2 := TouchArea {
                             clicked => {
                                 AudioState.add-previous-page(AudioState.current-view);
-                                AudioState.on-book-view(book.book-url);
+                                AudioState.on-book-view(book.book-url, book.title);
                                 AudioState.current-view = 5;
                             }
                         }
@@ -59,25 +63,27 @@ export component SearchDetail inherits Rectangle {
                 }
             }
         }
+
         Rectangle {
             height: item-height + 50px;
             width: root.width;
             VerticalBox {
                 padding: 0px;
-                Text{
+                Text {
                     text: "Youtube";
                     font-size: 20px;
                 }
+
                 ScrollView {
                     viewport-width: (item-width + item-padding) * youtube-item-count;
                     for book[i] in AudioState.search-yt: Rectangle {
                         x: i * (item-width + item-padding);
-    
+
                         width: item-width;
-                        height: item-height;                                
+                        height: item-height;
                         border-radius: 15px;
                         background: touch3.pressed ? Palette.selection-background : Palette.alternate-background;
-                        
+
                         VerticalBox {
                             alignment: center;
                             spacing: 2.5px;
@@ -87,6 +93,7 @@ export component SearchDetail inherits Rectangle {
                                 width: 125px;
                                 height: 125px;
                             }
+
                             Text {
                                 text: book.title;
                                 font-size: 15px;
@@ -94,13 +101,15 @@ export component SearchDetail inherits Rectangle {
                                 wrap: word-wrap;
                                 height: 50px;
                             }
+
                             Text {
                                 text: book.author;
                             }
                         }
+
                         touch3 := TouchArea {
                             clicked => {
-                                AudioState.on-book-view(book.book-url);
+                                AudioState.on-book-view(book.book-url, book.title);
                                 AudioState.add-previous-page(AudioState.current-view);
                                 AudioState.current-view = 5;
                             }

@@ -4,6 +4,7 @@ import { PlayingBar, PlayingWindow, AudioState } from "components/playback.slint
 import { TopBar, NavBar } from "components/navigation.slint";
 import { BookDetail } from "views/book.slint";
 import { SearchDetail } from "views/search.slint";
+import { HomeDetail } from "views/home.slint";
 
 export * from "components/playback.slint";
 /*
@@ -54,6 +55,7 @@ export component AppWindow inherits Window {
                 min-height: 200px;
                 if AudioState.current-view == 5: BookDetail {}
                 if AudioState.current-view == 1: SearchDetail {}
+                if AudioState.current-view == 0: HomeDetail {}
             }
             if !AudioState.logged-in: Rectangle {
                 VerticalBox {

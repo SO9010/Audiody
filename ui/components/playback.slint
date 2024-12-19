@@ -1,7 +1,7 @@
 import { Palette, ProgressIndicator, TimePickerPopup, HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
 import { BookItem, CoverImage } from "book.slint";
 
-export global AudioState  {
+export global AudioState {
     in-out property <bool> logged-in: true;
     in-out property <bool> playing: false;
     in-out property <bool> paused: true;
@@ -9,13 +9,15 @@ export global AudioState  {
     in-out property <string> page-name: "Audiody";
     in-out property <float> speed: 1.0;
 
+    in-out property <[BookItem]> home-page-books: [];
+
     in-out property <[BookItem]> search-libi: [];
     in-out property <[BookItem]> search-yt: [];
     in-out property <BookItem> book-view;
 
     in-out property <BookItem> now-playing;
     // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
-    
+
     // Playback control
     callback toggle-pause();
     callback skip-forward();
@@ -28,13 +30,12 @@ export global AudioState  {
     in-out property <int> current-view: 0;
 
     callback on-search-clicked(string);
-    callback on-book-view(string);
+    callback on-book-view(string, string);
 
-    /// Book, Chapter, URL 
+    /// Book, Chapter, URL
     callback chapter-download-and-play(string, int, string);
     callback chapter-download(string, int, string);
 }
-
 
 export component controls inherits Rectangle {
     HorizontalBox {
@@ -45,8 +46,11 @@ export component controls inherits Rectangle {
             height: 45px;
             width: 45px;
             touch1 := TouchArea {
-                clicked => { AudioState.skip-backward(); }
+                clicked => {
+                    AudioState.skip-backward();
+                }
             }
+
             Image {
                 source: @image-url("../img/skip-previous-svgrepo-com.svg");
                 colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
@@ -54,6 +58,7 @@ export component controls inherits Rectangle {
                 width: 35px;
             }
         }
+
         Rectangle {
             height: 45px;
             width: 45px;
@@ -63,6 +68,7 @@ export component controls inherits Rectangle {
                     AudioState.paused = !AudioState.paused;
                 }
             }
+
             Image {
                 source: AudioState.paused ? @image-url("../img/play-svgrepo-com.svg") : @image-url("../img/pause-svgrepo-com.svg");
                 colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
@@ -70,12 +76,16 @@ export component controls inherits Rectangle {
                 width: 45px;
             }
         }
+
         Rectangle {
             height: 45px;
             width: 45px;
             touch3 := TouchArea {
-                clicked => { AudioState.skip-forward() }
+                clicked => {
+                    AudioState.skip-forward()
+                }
             }
+
             Image {
                 source: @image-url("../img/skip-next-svgrepo-com.svg");
                 colorize: touch3.pressed ? Palette.selection-background : Palette.foreground;
@@ -100,6 +110,7 @@ export component PlayingBar inherits Rectangle {
                 source: AudioState.now-playing.image;
             }
         }
+
         Rectangle {
             controls {
                 x: -25px;
@@ -107,6 +118,7 @@ export component PlayingBar inherits Rectangle {
         }
     }
 }
+
 export component PlayingWindow inherits Rectangle {
     border-top-left-radius: 15px;
     border-radius: 0px;
@@ -124,9 +136,10 @@ export component PlayingWindow inherits Rectangle {
             }
         }
         // Placeholder for the time
-        ProgressIndicator { 
+        ProgressIndicator {
             progress: AudioState.timing;
         }
+
         Text {
             text: AudioState.now-playing.title;
             font-size: 25px;
@@ -134,7 +147,8 @@ export component PlayingWindow inherits Rectangle {
             wrap: word-wrap;
         }
 
-        Rectangle {}
+        Rectangle { }
+
         HorizontalLayout {
             padding: 0px;
             padding-bottom: 7.5px;
@@ -146,6 +160,7 @@ export component PlayingWindow inherits Rectangle {
                         time-picker.show();
                     }
                 }
+
                 time-picker := TimePickerPopup {
                     width: 360px;
                     height: 524px;
@@ -154,12 +169,13 @@ export component PlayingWindow inherits Rectangle {
                     canceled => {
                         time-picker.close();
                     }
-                
+
                     accepted(time) => {
                         debug(time);
                         time-picker.close();
                     }
                 }
+
                 Image {
                     source: @image-url("../img/moon-fog-svgrepo-com.svg");
                     colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
@@ -167,11 +183,13 @@ export component PlayingWindow inherits Rectangle {
                     width: 45px;
                 }
             }
+
             Rectangle {
                 controls {
                     y: -2.43px;
                 }
             }
+
             Rectangle {
                 height: 45px;
                 width: 45px;
@@ -181,6 +199,7 @@ export component PlayingWindow inherits Rectangle {
                     font-weight: 600;
                     color: touch4.pressed ? Palette.selection-background : Palette.foreground;
                 }
+
                 touch4 := TouchArea {
                     clicked => {
                         if (AudioState.speed < 2.0) {
