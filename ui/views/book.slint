@@ -4,9 +4,10 @@ import { VerticalBox, ScrollView, HorizontalBox, Palette, Button } from "std-wid
 
 export component BookDetail inherits Rectangle {
     ScrollView {
-        viewport-height: root.height * 1.5;
+        viewport-height: root.height * 5;
         if (AudioState.book-view.saved) : Rectangle {
             VerticalBox {
+                alignment: start;
                 spacing: 10px;
                 CoverImage {
                     src: AudioState.book-view.image;
@@ -17,11 +18,17 @@ export component BookDetail inherits Rectangle {
                     text: AudioState.book-view.title;
                     wrap: word-wrap;
                 }
+                Text {
+                    height: 40px;
+                    font-weight: 500;
+                    text: "Saved";
+                    wrap: word-wrap;
+                }
                 Rectangle {
                     border-radius: 5px;
                     background: playNow.pressed ? Palette.selection-background : Palette.alternate-background;
                     Text {
-                        text: "Download and play";
+                        text: "Play";
                     }
                     playNow := TouchArea {
                         clicked => { 
@@ -36,6 +43,7 @@ export component BookDetail inherits Rectangle {
         if (!AudioState.book-view.saved) : 
         Rectangle {
             VerticalBox {
+                alignment: start;
                 spacing: 10px;
                 CoverImage {
                     src: AudioState.book-view.image;
