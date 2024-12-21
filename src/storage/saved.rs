@@ -52,6 +52,7 @@ pub fn get_saved_book(book_str: String) -> Result<Option<Book>, Box<dyn std::err
     }
     Ok(book)
 }
+
 pub fn get_saved_books() -> Result<Vec<Book>, Box<dyn std::error::Error>> {
     let mut books: Vec<Book> = Vec::new();
 
