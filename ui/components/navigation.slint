@@ -20,14 +20,15 @@ export component TopBar inherits Rectangle {
                 font-size: 25px;
                 font-weight: 700;
             }
+
             back_touch := TouchArea {
                 clicked => {
                     AudioState.go-to-previous-page();
                 }
             }
         }
-        
-        if !search : Text {
+
+        if !search: Text {
             horizontal-alignment: TextHorizontalAlignment.left;
             text: AudioState.page-name;
             font-size: 25px;
@@ -35,7 +36,7 @@ export component TopBar inherits Rectangle {
             color: Palette.foreground;
         }
 
-        if search : Rectangle {
+        if search: Rectangle {
             background: Palette.alternate-background;
             txtinpt := TextInput {
                 color: Palette.foreground;
@@ -49,7 +50,6 @@ export component TopBar inherits Rectangle {
                     AudioState.on-search-clicked(self.text);
                     search = false;
                     AudioState.add-previous-page(AudioState.current-view);
-                    AudioState.current-view = 1;
                     AudioState.page-name = "Search: " + self.text;
                 }
             }
@@ -63,13 +63,16 @@ export component TopBar inherits Rectangle {
             source: @image-url("../img/search-svgrepo-com.svg");
 
             touch := TouchArea {
-                clicked => { 
+                clicked => {
                     search = !search;
                 }
             }
+
             colorize: touch.pressed ? Palette.selection-background : Palette.foreground;
         }
-    }}
+    }
+}
+
 export component NavBar inherits Rectangle {
     in property <bool> hidden;
 
@@ -83,26 +86,31 @@ export component NavBar inherits Rectangle {
                 width: 50px;
                 source: @image-url("../img/home-1-svgrepo-com.svg");
                 colorize: touch1.pressed ? Palette.selection-background : Palette.foreground;
-                touch1 := TouchArea {
-                }
-            }Image {
-                    height: 50px;
-                    width: 50px;
-                    source: @image-url("../img/book-2-svgrepo-com.svg");
-                    colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
-                    touch2 := TouchArea {}
-            }Image {
-                    height: 50px;
-                    width: 50px;
-                    source: @image-url("../img/stack-apps-layers-svgrepo-com.svg");
-                    colorize: touch3.pressed ? Palette.selection-background : Palette.foreground;
-                    touch3 := TouchArea {}
-            }Image {
-                    height: 50px;
-                    width: 50px;
-                    source: @image-url("../img/settings-svgrepo-com.svg");
-                    colorize: touch4.pressed ? Palette.selection-background : Palette.foreground;
-                    touch4 := TouchArea {}
+                touch1 := TouchArea { }
+            }
+
+            Image {
+                height: 50px;
+                width: 50px;
+                source: @image-url("../img/book-2-svgrepo-com.svg");
+                colorize: touch2.pressed ? Palette.selection-background : Palette.foreground;
+                touch2 := TouchArea { }
+            }
+
+            Image {
+                height: 50px;
+                width: 50px;
+                source: @image-url("../img/stack-apps-layers-svgrepo-com.svg");
+                colorize: touch3.pressed ? Palette.selection-background : Palette.foreground;
+                touch3 := TouchArea { }
+            }
+
+            Image {
+                height: 50px;
+                width: 50px;
+                source: @image-url("../img/settings-svgrepo-com.svg");
+                colorize: touch4.pressed ? Palette.selection-background : Palette.foreground;
+                touch4 := TouchArea { }
             }
         }
     }

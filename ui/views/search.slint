@@ -56,7 +56,6 @@ export component SearchDetail inherits Rectangle {
                             clicked => {
                                 AudioState.add-previous-page(AudioState.current-view);
                                 AudioState.on-book-view(book.book-url, book.title);
-                                AudioState.current-view = 5;
                             }
                         }
                     }
@@ -111,7 +110,6 @@ export component SearchDetail inherits Rectangle {
                             clicked => {
                                 AudioState.on-book-view(book.book-url, book.title);
                                 AudioState.add-previous-page(AudioState.current-view);
-                                AudioState.current-view = 5;
                             }
                         }
                     }

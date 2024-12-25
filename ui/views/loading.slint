@@ -1,0 +1,11 @@
+import { CoverImage } from "../components/book.slint";
+import { AudioState } from "../components/playback.slint";
+import { VerticalBox, ScrollView, HorizontalBox, Palette, Button, Spinner } from "std-widgets.slint";
+
+export component loading inherits Rectangle {
+    Spinner {
+        height: 75px;
+        indeterminate: true;
+        width: 75px;
+    }
+}

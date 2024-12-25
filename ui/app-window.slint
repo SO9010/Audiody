@@ -5,6 +5,7 @@ import { TopBar, NavBar } from "components/navigation.slint";
 import { BookDetail } from "views/book.slint";
 import { SearchDetail } from "views/search.slint";
 import { HomeDetail } from "views/home.slint";
+import { loading } from "views/loading.slint";
 
 export * from "components/playback.slint";
 /*
@@ -35,7 +36,7 @@ export * from "components/playback.slint";
 export component AppWindow inherits Window {
     title: "Audiody";
     background: Palette.background;
-    
+
     min-width: 350px;
     min-height: 600px;
     HorizontalBox {
@@ -50,12 +51,13 @@ export component AppWindow inherits Window {
                 compact: root.width >= 750px ? false : true;
             }
 
-            if AudioState.logged-in : Rectangle {
+            if AudioState.logged-in: Rectangle {
                 // This is where the views will go!
                 min-height: 200px;
-                if AudioState.current-view == 5: BookDetail {}
-                if AudioState.current-view == 1: SearchDetail {}
-                if AudioState.current-view == 0: HomeDetail {}
+                if AudioState.current-view == 5: BookDetail { }
+                if AudioState.current-view == 1: SearchDetail { }
+                if AudioState.current-view == 0: HomeDetail { }
+                if AudioState.current-view == 100: loading { }
             }
             if !AudioState.logged-in: Rectangle {
                 VerticalBox {
@@ -64,6 +66,7 @@ export component AppWindow inherits Window {
                         font-size: 20px;
                         font-weight: 700;
                     }
+
                     Rectangle {
                         border-radius: 15px;
                         background: touch.pressed ? Palette.selection-background : Palette.alternate-background;
@@ -72,11 +75,15 @@ export component AppWindow inherits Window {
                             font-size: 30px;
                             font-weight: 900;
                         }
+
                         touch := TouchArea {
                             // Run oAuth
-                            clicked => {AudioState.logged-in = true;}
+                            clicked => {
+                                AudioState.logged-in = true;
+                            }
                         }
                     }
+
                     Text {
                         text: "Audiody needs to use your google drive to store your audiobooks and currently playing/listening books, you can also add your own recordings to the audiody folder which will be automatically created.";
                         wrap: word-wrap;
@@ -86,7 +93,7 @@ export component AppWindow inherits Window {
                 }
             }
 
-            if root.width < 750px && AudioState.playing && AudioState.logged-in : Rectangle {
+            if root.width < 750px && AudioState.playing && AudioState.logged-in: Rectangle {
                 height: 50px;
                 // Placeholder for timebar
                 // Placeholder for the time
@@ -95,15 +102,12 @@ export component AppWindow inherits Window {
                     border-bottom-right-radius: 0px;
                 }
             }
-            NavBar {
-
-            }
+            NavBar { }
         }
 
-        if root.width >= 750px && AudioState.playing && AudioState.logged-in : Rectangle {
+        if root.width >= 750px && AudioState.playing && AudioState.logged-in: Rectangle {
             max-width: 300px;
-            PlayingWindow {
-            }
+            PlayingWindow { }
         }
     }
 }

@@ -1,5 +1,6 @@
-use audio::audios::AudioService;
+use audio::audios::{self, AudioService};
 use slint::{ComponentHandle, Model, VecModel};
+use std::sync::{Arc, Mutex};
 use std::thread::{self, Thread};
 use std::{path::PathBuf, rc::Rc, vec};
 
@@ -9,8 +10,8 @@ pub mod storage;
 
 use api::{webapi::WebApiClient, webimage::url_to_buffer};
 use storage::save::download_audio;
-use storage::saved::get_saved_books;
 use storage::saved::get_saved_book;
+use storage::saved::get_saved_books;
 use storage::setup::music_dir;
 use tokio::runtime::Runtime; // 0.3.5
 
@@ -37,7 +38,6 @@ fn init() -> State {
     console_error_panic_hook::set_once();
 
     // YT-DLP download should only be ran once
-    // TODO: Make this a background task
     // Downloading binaries
     thread::spawn(|| {
         // change this to be in the home folder, or the normal place to install scripts!
@@ -50,152 +50,53 @@ fn init() -> State {
             .unwrap();
     });
 
-    /* Update the downloads
-    let libraries_dir = PathBuf::from("libs");
-    let output_dir = PathBuf::from("output");
-
-    let youtube = libraries_dir.join("yt-dlp");
-    let ffmpeg = libraries_dir.join("ffmpeg");
-
-    let libraries = Libraries::new(youtube, ffmpeg);
-    let fetcher = Youtube::new(libraries, output_dir).unwrap();
-
-    Runtime::new().unwrap().block_on(fetcher.update_downloader()).unwrap();
-    */
-
-    let main_window = AppWindow::new().unwrap();
-    let audio_state = main_window.global::<AudioState>();
+    let main_window: AppWindow = AppWindow::new().unwrap();
+    let audio_state: AudioState<'_> = main_window.global::<AudioState>();
     let audio_service = AudioService::new();
 
     let webapi_client = WebApiClient::new();
     // Implement populating the books one by one do then it looks more dynamic and doesnt just wait ages
     // At somepoint we want to implement multi threading so that* the requests dont get int the way of the UI
-    let previous_views = Rc::new(std::cell::RefCell::new(vec![0]));
-
-    let main_window_weak = main_window.as_weak();
-    let previous_views_clone = previous_views.clone();
+    let previous_views = Arc::from(Mutex::new(vec![0]));
+    handle_ui_actions(
+        &main_window,
+        &audio_state,
+        previous_views,
+        &audio_service,
+        &webapi_client,
+    );
 
     // Set up the download folder
     music_dir();
 
+    State { main_window }
+}
+
+// UI Handling
+fn handle_ui_actions(
+    main_window: &AppWindow,
+    audio_state: &AudioState<'_>,
+    previous_views: Arc<Mutex<Vec<i32>>>,
+    audio_service: &AudioService,
+    webapi_client: &WebApiClient,
+) {
     // Get saved books:
-    let saved_books = get_saved_books().unwrap();
-    let saved_books_converted: Vec<BookItem> = saved_books
-        .into_iter()
-        .map(|book| BookItem {
-            title: book.title.into(),
-            author: book.author.into(),
-            description: book.description.clone().into(),
-            book_url: book.url.into(),
-            saved: book.saved,
-            image: Runtime::new()
-                .unwrap()
-                .block_on(url_to_buffer(book.image_URL))
-                .unwrap(),
-            chapter_urls: slint::ModelRc::new(slint::VecModel::from(
-                book.chapter_urls
-                    .into_iter()
-                    .map(|url| url.into())
-                    .collect::<Vec<slint::SharedString>>(),
-            )),
-            chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])),
-            chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])),
-        })
-        .collect();
-    main_window
-        .global::<AudioState>()
-        .set_home_page_books(slint::ModelRc::new(slint::VecModel::from(
-            saved_books_converted,
-        )));
+    handle_saved_books(&main_window);
 
-    audio_state.on_go_to_previous_page(move || {
-        if let Some(main_window) = main_window_weak.upgrade() {
-            if let Some(prev_view) = previous_views_clone.borrow_mut().pop() {
-                if prev_view == 0 {
-                    main_window
-                        .global::<AudioState>()
-                        .set_page_name("Audiody".into());
-                }
-                main_window
-                    .global::<AudioState>()
-                    .set_current_view(prev_view.into())
-            }
-        }
-    });
+    handle_previous_page_navigate(&main_window, &audio_state, Arc::clone(&previous_views));
 
-    let previous_views_clone = previous_views.clone();
-    audio_state.on_add_previous_page(move |page| {
-        previous_views_clone.borrow_mut().push(page);
-    });
+    handle_page_navigate(&audio_state, Arc::clone(&previous_views));
 
-    let main_window_weak = main_window.as_weak();
-    audio_state.on_on_search_clicked(move |query| {
-        // We also need to implement caching!
-        let books = Runtime::new()
-            .unwrap()
-            .block_on(webapi_client.clone().search(query.to_string()))
-            .unwrap();
-        let libri_book_items: Vec<BookItem> = books[0]
-            .clone()
-            .into_iter()
-            .map(|book| BookItem {
-                title: book.title.into(),
-                author: book.author.into(),
-                description: book.description.clone().into(),
-                book_url: book.url.into(),
-                saved: book.saved,
-                image: Runtime::new()
-                    .unwrap()
-                    .block_on(url_to_buffer(book.image_URL))
-                    .unwrap(),
-                chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])),
-                chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])),
-                chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])),
-            })
-            .collect();
-        let libri_book_model = slint::ModelRc::new(slint::VecModel::from(libri_book_items));
+    handle_search(&main_window, &audio_state, &webapi_client);
 
-        let yt_book_items: Vec<BookItem> = books[1]
-            .clone()
-            .into_iter()
-            .map(|book| BookItem {
-                title: book.title.into(),
-                author: book.author.into(),
-                description: book.description.clone().into(),
-                book_url: book.url.into(),
-                saved: book.saved,
-                image: Runtime::new()
-                    .unwrap()
-                    .block_on(url_to_buffer(book.image_URL))
-                    .unwrap(),
-                chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])),
-                chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])),
-                chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])),
-            })
-            .collect();
-        let yt_book_model = slint::ModelRc::new(slint::VecModel::from(yt_book_items));
+    handle_chapter_download_and_play(&main_window, &audio_state, &audio_service);
 
-        if let Some(main_window) = main_window_weak.upgrade() {
-            main_window
-                .global::<AudioState>()
-                .set_search_libi(libri_book_model);
-            main_window
-                .global::<AudioState>()
-                .set_search_yt(yt_book_model);
-        }
-    });
+    handle_chapter_download(&main_window, &audio_state);
 
-    let main_window_weak = main_window.as_weak();
-    let audio_service_clone = audio_service.clone();
-    audio_state.on_toggle_pause(move || {
-        if let Some(main_window) = main_window_weak.upgrade() {
-            if main_window.global::<AudioState>().get_paused() {
-                audio_service_clone.play();
-            } else {
-                audio_service_clone.pause();
-            }
-        }
-    });
+    handle_book_view(&main_window, &audio_state, &webapi_client);
+
+    // Playback handles
+    handle_pause(&main_window, &audio_state, &audio_service);
 
     let audio_service_clone = audio_service.clone();
     audio_state.on_skip_backward(move || {
@@ -214,106 +115,298 @@ fn init() -> State {
             audio_service_clone.set_speed(main_window.global::<AudioState>().get_speed());
         }
     });
+}
 
+fn handle_saved_books(main_window: &AppWindow) {
+    let saved_books = get_saved_books().unwrap();
+    let main_window_weak = main_window.as_weak();
+
+    thread::spawn(move || {
+        let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+            let saved_books_converted: Vec<BookItem> = saved_books
+                .into_iter()
+                .map(|book| BookItem {
+                    title: book.title.into(),
+                    author: book.author.into(),
+                    description: book.description.clone().into(),
+                    book_url: book.url.into(),
+                    saved: book.saved,
+                    image: Runtime::new()
+                        .unwrap()
+                        .block_on(url_to_buffer(book.image_URL))
+                        .unwrap(),
+                    chapter_urls: slint::ModelRc::new(slint::VecModel::from(
+                        book.chapter_urls
+                            .into_iter()
+                            .map(|url| url.into())
+                            .collect::<Vec<slint::SharedString>>(),
+                    )),
+                    chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                    chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                })
+                .collect();
+
+            let books = slint::ModelRc::new(slint::VecModel::from(saved_books_converted));
+            main_window
+                .global::<AudioState>()
+                .set_home_page_books(books)
+        });
+    });
+}
+
+fn handle_previous_page_navigate(
+    main_window: &AppWindow,
+    audio_state: &AudioState<'_>,
+    previous_views: Arc<Mutex<Vec<i32>>>,
+) {
+    let main_window_weak = main_window.as_weak();
+    audio_state.on_go_to_previous_page(move || {
+        let main_window_weak = main_window_weak.clone();
+        let previous_views = previous_views.clone();
+        thread::spawn(move || {
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                if let Some(prev_view) = previous_views.lock().unwrap().pop() {
+                    if prev_view == 0 {
+                        main_window
+                            .global::<AudioState>()
+                            .set_page_name("Audiody".into());
+                    }
+                    main_window
+                        .global::<AudioState>()
+                        .set_current_view(prev_view.into())
+                }
+            });
+        });
+    });
+}
+
+fn handle_page_navigate(audio_state: &AudioState<'_>, previous_views: Arc<Mutex<Vec<i32>>>) {
+    audio_state.on_add_previous_page(move |page| {
+        previous_views.lock().unwrap().push(page);
+    });
+}
+
+fn handle_search(
+    main_window: &AppWindow,
+    audio_state: &AudioState<'_>,
+    webapi_client: &WebApiClient,
+) {
+    let main_window_weak = main_window.as_weak();
+    let webapi_client_clone = webapi_client.clone();
+    audio_state.on_on_search_clicked(move |query| {
+        let webapi_client_clone = webapi_client_clone.clone();
+        let main_window_weak = main_window_weak.clone();
+        main_window_weak
+            .upgrade()
+            .unwrap()
+            .global::<AudioState>()
+            .set_current_view(100);
+        thread::spawn(move || {
+            let webapi_client_clone = webapi_client_clone.clone();
+
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                let books = Runtime::new()
+                    .unwrap()
+                    .block_on(webapi_client_clone.search(query.to_string()))
+                    .unwrap();
+                let libri_book_items: Vec<BookItem> = books[0]
+                    .clone()
+                    .into_iter()
+                    .map(|book| BookItem {
+                        title: book.title.into(),
+                        author: book.author.into(),
+                        description: book.description.clone().into(),
+                        book_url: book.url.into(),
+                        saved: book.saved,
+                        image: Runtime::new()
+                            .unwrap()
+                            .block_on(url_to_buffer(book.image_URL))
+                            .unwrap(),
+                        chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                        chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                        chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                    })
+                    .collect();
+                let libri_book_model = slint::ModelRc::new(slint::VecModel::from(libri_book_items));
+
+                let yt_book_items: Vec<BookItem> = books[1]
+                    .clone()
+                    .into_iter()
+                    .map(|book| BookItem {
+                        title: book.title.into(),
+                        author: book.author.into(),
+                        description: book.description.clone().into(),
+                        book_url: book.url.into(),
+                        saved: book.saved,
+                        image: Runtime::new()
+                            .unwrap()
+                            .block_on(url_to_buffer(book.image_URL))
+                            .unwrap(),
+                        chapter_urls: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                        chapter_durations: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                        chapter_reader: slint::ModelRc::new(slint::VecModel::from(vec![])),
+                    })
+                    .collect();
+                let yt_book_model = slint::ModelRc::new(slint::VecModel::from(yt_book_items));
+
+                main_window
+                    .global::<AudioState>()
+                    .set_search_libi(libri_book_model);
+                main_window
+                    .global::<AudioState>()
+                    .set_search_yt(yt_book_model);
+                main_window.global::<AudioState>().set_current_view(1);
+            });
+        });
+    });
+}
+
+fn handle_pause(main_window: &AppWindow, audio_state: &AudioState, audio_service: &AudioService) {
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+
+    audio_state.on_toggle_pause(move || {
+        if let Some(main_window) = main_window_weak.upgrade() {
+            if main_window.global::<AudioState>().get_paused() {
+                audio_service_clone.play();
+            } else {
+                audio_service_clone.pause();
+            }
+        }
+    });
+}
+
+fn handle_chapter_download_and_play(
+    main_window: &AppWindow,
+    audio_state: &AudioState,
+    audio_service: &AudioService,
+) {
     let main_window_weak = main_window.as_weak();
     let audio_service_clone = audio_service.clone();
     audio_state.on_chapter_download_and_play(move |book, chapter, URL| {
-        if let Some(main_window) = main_window_weak.upgrade() {
-            match download_audio(&book, chapter, &URL) {
-                Ok(path_buf) => {
-                    if let Some(path_str) = path_buf.to_str() {
-                        log::info!("Downloaded audio path: {}", path_str);
-                        audio_service_clone.start(path_str.to_string());
-                        audio_service_clone.play();
-                        main_window.global::<AudioState>().set_paused(false);
-                        // TODO: Optimise this so that it doesnt refresh the whole thing
-                        main_window.global::<AudioState>().get_home_page_books();
-                    } else {
-                        log::info!("Error: Path contains invalid UTF-8");
+        let audio_service_clone = audio_service_clone.clone();
+        let main_window_weak = main_window_weak.clone();
+        thread::spawn(move || {
+            let audio_service_clone = audio_service_clone.clone();
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                match download_audio(&book, chapter, &URL) {
+                    Ok(path_buf) => {
+                        if let Some(path_str) = path_buf.to_str() {
+                            log::info!("Downloaded audio path: {}", path_str);
+                            audio_service_clone.start(path_str.to_string());
+                            audio_service_clone.play();
+                            main_window.global::<AudioState>().set_paused(false);
+                            // TODO: Optimise this so that it doesnt refresh the whole thing
+                            main_window.global::<AudioState>().get_home_page_books();
+                        } else {
+                            log::info!("Error: Path contains invalid UTF-8");
+                        }
+                    }
+                    Err(e) => {
+                        log::info!("Error downloading audio: {}", e);
                     }
                 }
-                Err(e) => {
-                    log::info!("Error downloading audio: {}", e);
-                }
-            }
-        }
-    });
-
-    let main_window_weak = main_window.as_weak();
-    audio_state.on_chapter_download(move |book, chapter, URL| {
-        if let Some(main_window) = main_window_weak.upgrade() {
-
-        match download_audio(&book, chapter, &URL) {
-            Ok(path_buf) => {
-                if let Some(path_str) = path_buf.to_str() {
-                    log::info!("Downloaded audio path: {}", path_str);
-                    main_window.global::<AudioState>().get_home_page_books().as_any().downcast_ref::<VecModel<BookItem>>().unwrap().push(main_window.global::<AudioState>().get_book_view());
-                } else {
-                    log::info!("Error: Path contains invalid UTF-8");
-                }
-            }
-            Err(e) => {
-                log::info!("Error downloading audio: {}", e);
-            }
-        }}
-    });
-
-    let main_window_weak = main_window.as_weak();
-    let webapi_client = WebApiClient::new();
-    audio_state.on_on_book_view(move |bookURL, bookTitle| {
-        let main_window_weak = main_window_weak.clone();
-        let book: api::types::Book;
-        if let Ok(Some(book_thing)) = get_saved_book(bookTitle.to_string()) {
-            book = book_thing;
-        } else {
-            // We also need to implement caching!
-            let main_window_weak = main_window_weak.clone();
-            book = Runtime::new()
-                .unwrap()
-                .block_on(webapi_client.clone().get_book(bookURL.to_string()))
-                .unwrap();
-        }
-
-        let book_item = BookItem {
-            title: book.title.into(),
-            author: book.author.into(),
-            description: book.description.clone().into(),
-            book_url: book.url.into(),
-            saved: book.saved,
-            image: Runtime::new()
-                .unwrap()
-                .block_on(url_to_buffer(book.image_URL))
-                .unwrap(),
-            // Find a better way of doing this
-            chapter_urls: slint::ModelRc::new(slint::VecModel::from(
-                book.chapter_urls
-                    .into_iter()
-                    .map(|url| url.into())
-                    .collect::<Vec<slint::SharedString>>(),
-            )),
-
-            chapter_durations: slint::ModelRc::new(slint::VecModel::from(
-                book.chapter_durations
-                    .into_iter()
-                    .map(|dur| dur.into())
-                    .collect::<Vec<slint::SharedString>>(),
-            )),
-
-            chapter_reader: slint::ModelRc::new(slint::VecModel::from(
-                book.chapter_reader
-                    .into_iter()
-                    .map(|reader| reader.into())
-                    .collect::<Vec<slint::SharedString>>(),
-            )),
-        };
-
-        if let Some(main_window) = main_window_weak.upgrade() {
-            main_window.global::<AudioState>().set_book_view(book_item);
-        }
-    });
-
-    State { main_window }
+            });
+        });
+    })
 }
+
+fn handle_chapter_download(main_window: &AppWindow, audio_state: &AudioState) {
+    let main_window_weak = main_window.as_weak();
+    audio_state.on_chapter_download_and_play(move |book, chapter, URL| {
+        let main_window_weak = main_window_weak.clone();
+        thread::spawn(move || {
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                match download_audio(&book, chapter, &URL) {
+                    Ok(path_buf) => {
+                        if let Some(path_str) = path_buf.to_str() {
+                            log::info!("Downloaded audio path: {}", path_str);
+                            // TODO: Optimise this so that it doesnt refresh the whole thing
+                            main_window.global::<AudioState>().get_home_page_books();
+                        } else {
+                            log::info!("Error: Path contains invalid UTF-8");
+                        }
+                    }
+                    Err(e) => {
+                        log::info!("Error downloading audio: {}", e);
+                    }
+                }
+            });
+        });
+    })
+}
+
+fn handle_book_view(
+    main_window: &AppWindow,
+    audio_state: &AudioState<'_>,
+    webapi_client: &WebApiClient,
+) {
+    let main_window_weak = main_window.as_weak();
+    let webapi_client = webapi_client.clone();
+    audio_state.on_on_book_view(move |book_url, book_title| {
+        let main_window_weak = main_window_weak.clone();
+        let webapi_client_clone = webapi_client.clone();
+        main_window_weak
+            .upgrade()
+            .unwrap()
+            .global::<AudioState>()
+            .set_current_view(100);
+        thread::spawn(move || {
+            let webapi_client_clone = webapi_client_clone.clone();
+            let main_window_weak = main_window_weak.clone();
+
+            let mut book = api::types::Book::default();
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                if let Ok(Some(book_thing)) = get_saved_book(book_title.to_string()) {
+                    book = book_thing;
+                } else {
+                    // We also need to implement caching!
+                    book = Runtime::new()
+                        .unwrap()
+                        .block_on(webapi_client_clone.clone().get_book(book_url.to_string()))
+                        .unwrap();
+                }
+
+                let book_item = BookItem {
+                    title: book.title.into(),
+                    author: book.author.into(),
+                    description: book.description.clone().into(),
+                    book_url: book.url.into(),
+                    saved: book.saved,
+                    image: Runtime::new()
+                        .unwrap()
+                        .block_on(url_to_buffer(book.image_URL))
+                        .unwrap(),
+                    // Find a better way of doing this
+                    chapter_urls: slint::ModelRc::new(slint::VecModel::from(
+                        book.chapter_urls
+                            .into_iter()
+                            .map(|url| url.into())
+                            .collect::<Vec<slint::SharedString>>(),
+                    )),
+
+                    chapter_durations: slint::ModelRc::new(slint::VecModel::from(
+                        book.chapter_durations
+                            .into_iter()
+                            .map(|dur| dur.into())
+                            .collect::<Vec<slint::SharedString>>(),
+                    )),
+
+                    chapter_reader: slint::ModelRc::new(slint::VecModel::from(
+                        book.chapter_reader
+                            .into_iter()
+                            .map(|reader| reader.into())
+                            .collect::<Vec<slint::SharedString>>(),
+                    )),
+                };
+
+                main_window.global::<AudioState>().set_book_view(book_item);
+                main_window.global::<AudioState>().set_current_view(5);
+            });
+        });
+    });
+}
+
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {

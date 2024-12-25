@@ -175,7 +175,6 @@ impl LibriVoxClient {
         if chapters.is_empty() {
             log::warn!("No chapters found for book: {}", title);
         }
-        // TODO: FIX when it doesnt have any chapters
 
         Ok(Book {
             saved: false,
