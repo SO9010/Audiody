@@ -10,7 +10,11 @@ pub fn get_saved_book(book_str: String) -> Result<Option<Book>, Box<dyn std::err
         let entry = entry?;
         let mut chapter_urls = Vec::new();
         let mut image_url = Vec::new();
-        let mut settings: settings = settings { book_url: "".to_string() };
+        let mut settings: settings = settings {
+            book_url: "".to_string(),
+            current_chapter: None,
+            current_chapter_time: None,
+        };
 
         if entry
             .path()
@@ -29,17 +33,18 @@ pub fn get_saved_book(book_str: String) -> Result<Option<Book>, Box<dyn std::err
                     } else if file_name.contains(".mp3") {
                         chapter_urls.push(file_name);
                     } else if file_name.contains("settings.json") {
-                        settings = serde_json::from_str(&fs::read_to_string(file_name).unwrap()).unwrap();
+                        settings =
+                            serde_json::from_str(&fs::read_to_string(file_name).unwrap()).unwrap();
                     }
                 }
             }
 
             // Ensure image_url is valid and has at least one entry
-            let image_url = image_url.first()
+            let image_url = image_url
+                .first()
                 .cloned()
                 .unwrap_or_else(|| "default_image_url".to_string()); // Replace with a fallback value if necessary
 
-            
             book = Some(Book {
                 saved: true,
                 title: entry.file_name().into_string().unwrap_or_default(),
@@ -66,6 +71,11 @@ pub fn get_saved_books() -> Result<Vec<Book>, Box<dyn std::error::Error>> {
         let entry = entry?;
         let mut chapter_urls = Vec::new();
         let mut image_url = Vec::new();
+        let mut settings: settings = settings {
+            book_url: "".to_string(),
+            current_chapter: None,
+            current_chapter_time: None,
+        };
 
         for item in fs::read_dir(entry.path())? {
             let item = item?;
@@ -77,12 +87,16 @@ pub fn get_saved_books() -> Result<Vec<Book>, Box<dyn std::error::Error>> {
                     image_url.push(file_name);
                 } else if file_name.contains(".mp3") {
                     chapter_urls.push(file_name);
+                } else if file_name.contains("settings.json") {
+                    settings =
+                        serde_json::from_str(&fs::read_to_string(file_name).unwrap()).unwrap();
                 }
             }
         }
 
         // Ensure image_url is valid and has at least one entry
-        let image_url = image_url.first()
+        let image_url = image_url
+            .first()
             .cloned()
             .unwrap_or_else(|| "default_image_url".to_string()); // Replace with a fallback value if necessary
 
@@ -94,7 +108,7 @@ pub fn get_saved_books() -> Result<Vec<Book>, Box<dyn std::error::Error>> {
             chapter_reader: vec![],    // Update with appropriate data
             description: "".to_string(),
             author: "".to_string(),
-            url: "".to_string(),
+            url: settings.book_url.to_string(),
             image_URL: image_url,
         });
     }

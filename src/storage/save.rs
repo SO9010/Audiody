@@ -13,7 +13,9 @@ use super::setup::music_dir;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct settings {
-    pub book_url: String
+    pub book_url: String,
+    pub current_chapter: Option<i32>,
+    pub current_chapter_time: Option<f64>,
 }
 
 /// Book, Chapter, URL
@@ -30,13 +32,8 @@ pub fn download_audio(
     fs::create_dir_all(&audio_path)?;
     // Open the output file to write the audio content
     let output_file = audio_path.clone().join(format!("chapter_{}.mp3", chapt));
-    let settings_file = audio_path.clone().join("settings.json");
-    let mut settings = File::create(settings_file)?;
-    settings.write_all(serde_json::to_string(
-        &settings {
-            book_url: book_url.to_string(),
-        }
-    ).unwrap().as_bytes());
+    
+    save_progress(book, None, book_url, None)?;
 
     if !output_file.exists() {
         if url.contains("youtube") {
@@ -104,6 +101,27 @@ pub fn download_audio(
     }
 
     Ok(output_file)
-}pub fn save_progress(book: &str, chapt: i32, url: &str) -> Result<(), Box<dyn std::error::Error>> {
+}
+
+pub fn save_progress(book: &str, chapt: Option<i32>, url: &str, chapter_play_time: Option<f64>) -> Result<(), Box<dyn std::error::Error>> {
+    let audio_path = music_dir().unwrap().as_path().join(book);
+    let settings_file = audio_path.clone().join("settings.json");
+    let mut settings = File::create(settings_file)?;
+
+    settings.write_all(serde_json::to_string(
+        &settings {
+            book_url: url.to_string(),
+            current_chapter: chapt,
+            current_chapter_time: chapter_play_time,
+        }
+    ).unwrap().as_bytes());
+
     Ok(())
+}
+
+pub fn get_progress(book: &str) -> Result<settings, Box<dyn std::error::Error>> {
+    let audio_path = music_dir().unwrap().as_path().join(book);
+    let settings_file = audio_path.clone().join("settings.json");
+    let settings_str = fs::read_to_string(settings_file)?;
+    Ok(serde_json::from_str(&settings_str)?)
 }

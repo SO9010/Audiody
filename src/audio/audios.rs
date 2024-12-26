@@ -1,4 +1,4 @@
-use rodio::{Decoder, OutputStream, Sink};
+use rodio::{Decoder, OutputStream, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::{mpsc, Arc, Mutex};
@@ -16,6 +16,7 @@ pub struct AudioService {
 // Commands for audio control
 enum AudioCommand {
     Start(String),
+    Queue(String),
     Play,
     Pause,
     Speed(f32),
@@ -51,6 +52,13 @@ impl AudioService {
                     *playback_distance_clone.lock().unwrap() = sink.get_pos().as_secs();
                 }
                 match command_rx_clone.lock().unwrap().recv() {
+                    Ok(AudioCommand::Queue(path)) => {
+                        if let Some(sink) = sink_clone.lock().unwrap().as_ref() {
+                            let file = BufReader::new(File::open(path).unwrap());
+                            let source = Decoder::new(file).unwrap();
+                            sink.append(source);
+                        }
+                    }
                     Ok(AudioCommand::Start(path)) => {
                         if let Some(sink) = sink_clone.lock().unwrap().as_ref() {
                             let file = BufReader::new(File::open(path).unwrap());
@@ -101,6 +109,11 @@ impl AudioService {
         }
     }
 
+    pub fn queue(&self, path: String) {
+        // Send a signal to the audio thread to pause
+        self.command_tx.send(AudioCommand::Queue(path)).unwrap();
+    }
+
     pub fn start(&self, path: String) {
         // Send a signal to the audio thread to pause
         self.command_tx.send(AudioCommand::Start(path)).unwrap();
@@ -135,8 +148,12 @@ impl AudioService {
             .unwrap();
     }
 
-    // Need to implement!
-    // pub fn get_chapter_len(&self, chapter_path: &str) -> u64 {}
+    pub fn get_chapter_len(&self, chapter_path: &str) -> std::time::Duration {
+        let file = std::fs::File::open(chapter_path).unwrap();
+        let source = Decoder::new(BufReader::new(file)).unwrap();
+        let duration: std::time::Duration = source.total_duration().unwrap();
+        duration
+    }
 
     pub fn get_current_pos(&self) -> u64 {
         *self.playback_distance.lock().unwrap()

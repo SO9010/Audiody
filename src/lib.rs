@@ -1,9 +1,8 @@
 use audio::audios::AudioService;
 use slint::ComponentHandle;
-use std::borrow::BorrowMut;
+use std::path;
 use std::sync::{Arc, Mutex};
 use std::thread::{self};
-use std::u32::MAX;
 use std::{path::PathBuf, vec};
 
 pub mod api;
@@ -11,7 +10,7 @@ pub mod audio;
 pub mod storage;
 
 use api::{webapi::WebApiClient, webimage::url_to_buffer};
-use storage::save::download_audio;
+use storage::save::{download_audio, get_progress, save_progress};
 use storage::saved::get_saved_book;
 use storage::saved::get_saved_books;
 use storage::setup::music_dir;
@@ -96,7 +95,11 @@ fn handle_ui_actions(
 
     handle_book_view(main_window, audio_state, webapi_client);
 
-    // Playback handles
+    // Playback handles    
+    handle_playing(main_window, audio_state, audio_service);
+
+    handle_add_queue(main_window, audio_state, audio_service);
+
     handle_pause(main_window, audio_state, audio_service);
 
     let audio_service_clone = audio_service.clone();
@@ -166,8 +169,11 @@ fn handle_previous_page_navigate(
         let previous_views = previous_views.clone();
         thread::spawn(move || {
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                // Sort it so the loading doesnt work
                 if let Some(mut prev_view) = previous_views.lock().unwrap().pop() {
-            
+                    if prev_view == 100 {
+                        prev_view = previous_views.lock().unwrap().pop().unwrap();
+                    }
                     if prev_view == 0 {
                         main_window
                             .global::<AudioState>()
@@ -278,6 +284,26 @@ fn handle_pause(main_window: &AppWindow, audio_state: &AudioState, audio_service
     });
 }
 
+fn handle_add_queue(main_window: &AppWindow,
+    audio_state: &AudioState,
+    audio_service: &AudioService,
+) {
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_queue_next_track(move || {
+        let audio_service_clone = audio_service_clone.clone();
+        let main_window_weak = main_window_weak.clone();
+        thread::spawn(move || {
+            let audio_service_clone = audio_service_clone.clone();
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                main_window.global::<AudioState>().get_now_playing().book_url;
+            });
+    
+            // audio_service_clone.queue();
+        });
+    });
+}
+
 fn handle_chapter_download_and_play(
     main_window: &AppWindow,
     audio_state: &AudioState,
@@ -291,7 +317,16 @@ fn handle_chapter_download_and_play(
         thread::spawn(move || {
             let audio_service_clone = audio_service_clone.clone();
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                match download_audio(&book, chapter, &URL, &main_window.global::<AudioState>().get_book_view().book_url.to_string()) {
+                match download_audio(
+                    &book,
+                    chapter,
+                    &URL,
+                    &main_window
+                        .global::<AudioState>()
+                        .get_book_view()
+                        .book_url
+                        .to_string(),
+                ) {
                     Ok(path_buf) => {
                         if let Some(path_str) = path_buf.to_str() {
                             log::info!("Downloaded audio path: {}", path_str);
@@ -301,6 +336,19 @@ fn handle_chapter_download_and_play(
                             main_window.global::<AudioState>().set_paused(false);
                             // TODO: Optimise this so that it doesnt refresh the whole thing
                             main_window.global::<AudioState>().get_home_page_books();
+                            let child = path_buf.file_name()
+                            .unwrap()
+                            .to_ascii_lowercase()
+                            .into_string()
+                            .unwrap()
+                            .split_off(8); // Remove first 8 chars ("chapter_")
+                        
+                            let chapter_number = child[..child.len()-4].to_string(); // Remove last 4 chars (".mp3")
+                            if let Ok(chapter_num) = chapter_number.parse::<i32>() {
+                                save_progress(&main_window.global::<AudioState>().get_now_playing().title, Some(chapter_num), &main_window.global::<AudioState>().get_now_playing().book_url.as_str(), None);
+                            } else {
+                                log::error!("Failed to parse chapter number: {}", chapter_number);
+                            }
                         } else {
                             log::info!("Error: Path contains invalid UTF-8");
                         }
@@ -313,14 +361,22 @@ fn handle_chapter_download_and_play(
         });
     })
 }
-
 fn handle_chapter_download(main_window: &AppWindow, audio_state: &AudioState) {
     let main_window_weak = main_window.as_weak();
     audio_state.on_chapter_download(move |book, chapter, URL| {
         let main_window_weak = main_window_weak.clone();
         thread::spawn(move || {
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                match download_audio(&book, chapter, &URL, &main_window.global::<AudioState>().get_book_view().book_url.to_string()) {
+                match download_audio(
+                    &book,
+                    chapter,
+                    &URL,
+                    &main_window
+                        .global::<AudioState>()
+                        .get_book_view()
+                        .book_url
+                        .to_string(),
+                ) {
                     Ok(path_buf) => {
                         if let Some(path_str) = path_buf.to_str() {
                             log::info!("Downloaded audio path: {}", path_str);
@@ -364,9 +420,9 @@ fn handle_book_view(
                     book = book_thing;
 
                     let mut book_online = Runtime::new()
-                    .unwrap()
-                    .block_on(webapi_client_clone.clone().get_book(book_url.to_string()))
-                    .unwrap();
+                        .unwrap()
+                        .block_on(webapi_client_clone.clone().get_book(book_url.to_string()))
+                        .unwrap();
 
                     if book.chapter_urls.len() != book_online.chapter_urls.len() {
                         book_online.image_URL = book.image_URL;
@@ -415,6 +471,41 @@ fn handle_book_view(
 
                 main_window.global::<AudioState>().set_book_view(book_item);
                 main_window.global::<AudioState>().set_current_view(5);
+            });
+        });
+    });
+}
+
+fn handle_playing(
+    main_window: &AppWindow,
+    audio_state: &AudioState<'_>,
+    audio_service: &AudioService,
+) {
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_playing_action(move || {
+        let main_window_weak = main_window_weak.clone();
+        let audio_service_clone = audio_service_clone.clone();
+        thread::spawn(move || {
+            let audio_service_clone = audio_service_clone.clone();
+            let main_window_weak = main_window_weak.clone();
+
+            // Make this far more efficient
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                let audio_path = music_dir().unwrap().as_path().join(main_window.global::<AudioState>().get_now_playing().title).join(format!{"chapter_{}.mp3", get_progress(&main_window.global::<AudioState>().get_now_playing().title).unwrap().current_chapter.unwrap()});
+
+                let current_pos = audio_service_clone.get_current_pos() as f32;
+                let chapter_len = audio_service_clone.get_chapter_len(audio_path.clone().to_str().unwrap()).as_secs_f32();
+
+                main_window.global::<AudioState>().set_timing(
+                    current_pos / chapter_len
+                );
+                save_progress(
+                    &main_window.global::<AudioState>().get_now_playing().title,
+                    get_progress(&main_window.global::<AudioState>().get_now_playing().title).unwrap().current_chapter,
+                    &main_window.global::<AudioState>().get_now_playing().book_url.as_str(),
+                    Some((current_pos / chapter_len) as f64)
+                );
             });
         });
     });

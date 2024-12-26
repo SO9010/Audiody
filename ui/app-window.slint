@@ -105,6 +105,17 @@ export component AppWindow inherits Window {
             NavBar { }
         }
 
+        Timer {
+            interval: 100ms;
+            running: !AudioState.paused;
+            triggered() => {
+                AudioState.playing-action();
+                if (AudioState.timing >= 0.95) {
+                    AudioState.queue-next-track()
+                }
+            }
+        }
+
         if root.width >= 750px && AudioState.playing && AudioState.logged-in: Rectangle {
             max-width: 300px;
             PlayingWindow { }

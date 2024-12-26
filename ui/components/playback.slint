@@ -5,7 +5,8 @@ export global AudioState {
     in-out property <bool> logged-in: true;
     in-out property <bool> playing: false;
     in-out property <bool> paused: true;
-    in-out property <float> timing: 0.3;
+    in-out property <float> timing: 0.0;
+    in-out property <float> playback_update: 0.01;
     in-out property <string> page-name: "Audiody";
     in-out property <float> speed: 1.0;
 
@@ -16,13 +17,15 @@ export global AudioState {
     in-out property <BookItem> book-view;
 
     in-out property <BookItem> now-playing;
-    // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
 
+    // 0 for home 1 for search, 2 for books, 3 for settings, 4 for now playing, 5 for book-view
     // Playback control
     callback toggle-pause();
     callback skip-forward();
     callback skip-backward();
     callback change-speed();
+    callback queue-next-track();
+    callback playing-action();
 
     // Paging
     callback go-to-previous-page();
@@ -42,6 +45,7 @@ export component controls inherits Rectangle {
         alignment: center;
         spacing: 20px;
         padding: 5px;
+
         Rectangle {
             height: 45px;
             width: 45px;
@@ -113,7 +117,7 @@ export component PlayingBar inherits Rectangle {
 
         Rectangle {
             controls {
-                x: -25px;
+                x: -22.5px;
             }
         }
     }
@@ -134,10 +138,6 @@ export component PlayingWindow inherits Rectangle {
                 image-fit: ImageFit.contain;
                 source: AudioState.now-playing.image;
             }
-        }
-        // Placeholder for the time
-        ProgressIndicator {
-            progress: AudioState.timing;
         }
 
         Text {
