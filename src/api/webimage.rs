@@ -1,11 +1,11 @@
-use image::{buffer, io::Reader as ImageReader, open};
+use image::{io::Reader as ImageReader, open};
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 use std::io::Cursor;
 
 pub async fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Error>> {
     log::info!("Converting: {url}");
     let mut url = url;
-    if url.find("lh3.googleusercontent.com").is_some() {
+    if url.contains("lh3.googleusercontent.com") {
         url.push('0');
     }
     let rgba_img;
@@ -26,8 +26,8 @@ pub async fn url_to_buffer(url: String) -> Result<Image, Box<dyn std::error::Err
         rgba_img = open(&url).unwrap().into_rgba8();
     }
 
-    let width = rgba_img.width() as u32;
-    let height = rgba_img.height() as u32;
+    let width = rgba_img.width();
+    let height = rgba_img.height();
 
     // Create SharedPixelBuffer from raw pixels
     let mut pixel_buffer = SharedPixelBuffer::<Rgba8Pixel>::new(width, height);

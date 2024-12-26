@@ -19,6 +19,12 @@ pub struct WebApiClient {
     libri_client: LibriVoxClient,
 }
 
+impl Default for WebApiClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WebApiClient {
     pub fn new() -> Self {
         Self {
@@ -47,7 +53,7 @@ impl WebApiClient {
         log::info!("Getting book: {}", url);
         if url.contains("librivox") {
             let libri_book = self.libri_client.get_book(url).unwrap();
-            return Ok(libri_book);
+            Ok(libri_book)
         } else if url.contains("youtube.com") {
             let yt_book = self.youtube_client.get_book(url).await?;
             return Ok(yt_book);

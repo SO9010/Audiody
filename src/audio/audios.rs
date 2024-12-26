@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+use tokio::time::error::Elapsed;
 
 #[derive(Clone)]
 pub struct AudioService {
@@ -20,6 +21,12 @@ enum AudioCommand {
     Speed(f32),
     RelativeSeek(i64),
     Volume(f32),
+}
+
+impl Default for AudioService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AudioService {
@@ -50,7 +57,7 @@ impl AudioService {
                             let source = Decoder::new(file).unwrap();
                             sink.clear();
                             sink.append(source);
-                            sink.pause(); 
+                            sink.pause();
                         }
                     }
                     Ok(AudioCommand::Play) => {
@@ -86,7 +93,12 @@ impl AudioService {
             }
         });
 
-        Self { stream_handle, sink, command_tx, playback_distance }
+        Self {
+            stream_handle,
+            sink,
+            command_tx,
+            playback_distance,
+        }
     }
 
     pub fn start(&self, path: String) {
@@ -111,21 +123,22 @@ impl AudioService {
 
     pub fn seek_relative(&self, seconds: i64) {
         // Send a signal to the audio thread to set the speed
-        self.command_tx.send(AudioCommand::RelativeSeek(seconds)).unwrap();
+        self.command_tx
+            .send(AudioCommand::RelativeSeek(seconds))
+            .unwrap();
     }
 
     pub fn set_volume(&self, volume: f32) {
         // Send a signal to the audio thread to set the speed
-        self.command_tx.send(AudioCommand::Volume(volume.min(100.0))).unwrap();
+        self.command_tx
+            .send(AudioCommand::Volume(volume.min(100.0)))
+            .unwrap();
     }
 
-    // find a different way to get neta data hopefully with less packages
-   // pub fn get_chapter_len(&self, chapter_path: &str) -> u64 {
-        // Send a signal to the audio thread to set the speed
-        //metadata::media_file::MediaFileMetadata::new(&std::path::Path::new(chapter_path)).unwrap()._duration 
-    //}
-    pub fn get_current_pos(&self, chapter_path: &str) -> u64 {
-        // Send a signal to the audio thread to set the speed
-        self.playback_distance.lock().unwrap().clone()
+    // Need to implement!
+    // pub fn get_chapter_len(&self, chapter_path: &str) -> u64 {}
+
+    pub fn get_current_pos(&self) -> u64 {
+        *self.playback_distance.lock().unwrap()
     }
 }

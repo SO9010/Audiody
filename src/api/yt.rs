@@ -1,9 +1,9 @@
-use std::path::{Path, PathBuf};
-use std::{fs, thread, vec};
+use std::path::PathBuf;
+use std::{thread, vec};
 use std::process::{ Command, Stdio };
 
 use crate::api::types::*;
-use rusty_ytdl::{Chapter, Video};
+use rusty_ytdl::Video;
 use rusty_ytdl::search::{SearchResult, YouTube};
 use tokio::runtime::Runtime;
 
@@ -11,6 +11,12 @@ use tokio::runtime::Runtime;
 pub struct YouTubeClient {
     youtube: YouTube,
     base_url: String,
+}
+
+impl Default for YouTubeClient {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl YouTubeClient {
@@ -33,7 +39,7 @@ impl YouTubeClient {
                     SearchResult::Video(video) => Some(Book {
                         title: video.title.clone(),
                         author: video.channel.name.clone(),
-                        image_URL: video.thumbnails.get(0).unwrap().url.clone(),
+                        image_URL: video.thumbnails.first().unwrap().url.clone(),
                         url: video.url.clone(),
                         description: video.description.clone(),
                         saved: false,
@@ -105,7 +111,7 @@ impl YouTubeClient {
                 let chapter_name = video_info.video_details.chapters[chapter as usize].title.clone(); // Assuming chapters are structs with a `name` field.
                 log::info!("Chapter name: {}", chapter_name);
                 let _ = Command::new(youtube)
-                .args(&[
+                .args([
                     "--extract-audio",          // Extract audio only
                     "--audio-format", "mp3",   // Set audio format to mp3
                     "--write-auto-sub",        // Download auto-generated subtitles

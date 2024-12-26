@@ -1,22 +1,27 @@
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use image::io::Reader;
-use image::{DynamicImage, ImageFormat};
+use image::DynamicImage;
+use serde::{Serialize, Deserialize};
 use ureq;
 use webp::Encoder;
-use yt_dlp::model::format;
 
-use crate::api::webimage::url_to_buffer;
 use crate::api::yt::YouTubeClient;
 
 use super::setup::music_dir;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct settings {
+    pub book_url: String
+}
 
 /// Book, Chapter, URL
 pub fn download_audio(
     book: &str,
     chapt: i32,
     url: &str,
+    book_url: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // TODO: WE NEED TO ADD A METADATA FILE WHICH STATES THINGS SUCH AS PLAY THROUGH, DESCRIPTION AND CHAPTERS and all their URLS!
 
@@ -24,7 +29,14 @@ pub fn download_audio(
     let audio_path = music_dir().unwrap().as_path().join(book);
     fs::create_dir_all(&audio_path)?;
     // Open the output file to write the audio content
-    let output_file = audio_path.join(format!("chapter_{}.mp3", chapt));
+    let output_file = audio_path.clone().join(format!("chapter_{}.mp3", chapt));
+    let settings_file = audio_path.clone().join("settings.json");
+    let mut settings = File::create(settings_file)?;
+    settings.write_all(serde_json::to_string(
+        &settings {
+            book_url: book_url.to_string(),
+        }
+    ).unwrap().as_bytes());
 
     if !output_file.exists() {
         if url.contains("youtube") {
@@ -55,7 +67,7 @@ pub fn download_audio(
                 p_osstr.push(".jpg");
                 let jpg_path = std::path::Path::new(&p_osstr);
         
-                let mut jpg_file = File::create(&jpg_path)?;
+                let mut jpg_file = File::create(jpg_path)?;
                 let mut reader = response.into_reader();
                 io::copy(&mut reader, &mut jpg_file)?;
         

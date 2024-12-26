@@ -9,6 +9,12 @@ pub struct LibriVoxClient {
     base_url: String,
 }
 
+impl Default for LibriVoxClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LibriVoxClient {
     pub fn new() -> Self {
         Self {
@@ -82,7 +88,7 @@ impl LibriVoxClient {
                 .text()
                 .collect::<String>()
                 .lines()
-                .filter(|line| line.trim().len() > 0)
+                .filter(|line| !line.trim().is_empty())
                 .last()
                 .unwrap_or("")
                 .trim()

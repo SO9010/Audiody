@@ -1,8 +1,10 @@
-use audio::audios::{self, AudioService};
-use slint::{ComponentHandle, Model, VecModel};
+use audio::audios::AudioService;
+use slint::ComponentHandle;
+use std::borrow::BorrowMut;
 use std::sync::{Arc, Mutex};
-use std::thread::{self, Thread};
-use std::{path::PathBuf, rc::Rc, vec};
+use std::thread::{self};
+use std::u32::MAX;
+use std::{path::PathBuf, vec};
 
 pub mod api;
 pub mod audio;
@@ -13,7 +15,7 @@ use storage::save::download_audio;
 use storage::saved::get_saved_book;
 use storage::saved::get_saved_books;
 use storage::setup::music_dir;
-use tokio::runtime::Runtime; // 0.3.5
+use tokio::runtime::{Handle, Runtime}; // 0.3.5
 
 use yt_dlp::Youtube;
 
@@ -53,11 +55,12 @@ fn init() -> State {
     let main_window: AppWindow = AppWindow::new().unwrap();
     let audio_state: AudioState<'_> = main_window.global::<AudioState>();
     let audio_service = AudioService::new();
-
     let webapi_client = WebApiClient::new();
-    // Implement populating the books one by one do then it looks more dynamic and doesnt just wait ages
-    // At somepoint we want to implement multi threading so that* the requests dont get int the way of the UI
     let previous_views = Arc::from(Mutex::new(vec![0]));
+
+    // Set up the download folder
+    music_dir();
+
     handle_ui_actions(
         &main_window,
         &audio_state,
@@ -65,9 +68,6 @@ fn init() -> State {
         &audio_service,
         &webapi_client,
     );
-
-    // Set up the download folder
-    music_dir();
 
     State { main_window }
 }
@@ -80,23 +80,24 @@ fn handle_ui_actions(
     audio_service: &AudioService,
     webapi_client: &WebApiClient,
 ) {
+    let mut inital_playback_distance: u64 = 0;
     // Get saved books:
-    handle_saved_books(&main_window);
+    handle_saved_books(main_window);
 
-    handle_previous_page_navigate(&main_window, &audio_state, Arc::clone(&previous_views));
+    handle_previous_page_navigate(main_window, audio_state, Arc::clone(&previous_views));
 
-    handle_page_navigate(&audio_state, Arc::clone(&previous_views));
+    handle_page_navigate(audio_state, Arc::clone(&previous_views));
 
-    handle_search(&main_window, &audio_state, &webapi_client);
+    handle_search(main_window, audio_state, webapi_client);
 
-    handle_chapter_download_and_play(&main_window, &audio_state, &audio_service);
+    handle_chapter_download_and_play(main_window, audio_state, audio_service);
 
-    handle_chapter_download(&main_window, &audio_state);
+    handle_chapter_download(main_window, audio_state);
 
-    handle_book_view(&main_window, &audio_state, &webapi_client);
+    handle_book_view(main_window, audio_state, webapi_client);
 
     // Playback handles
-    handle_pause(&main_window, &audio_state, &audio_service);
+    handle_pause(main_window, audio_state, audio_service);
 
     let audio_service_clone = audio_service.clone();
     audio_state.on_skip_backward(move || {
@@ -165,7 +166,8 @@ fn handle_previous_page_navigate(
         let previous_views = previous_views.clone();
         thread::spawn(move || {
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                if let Some(prev_view) = previous_views.lock().unwrap().pop() {
+                if let Some(mut prev_view) = previous_views.lock().unwrap().pop() {
+            
                     if prev_view == 0 {
                         main_window
                             .global::<AudioState>()
@@ -173,7 +175,7 @@ fn handle_previous_page_navigate(
                     }
                     main_window
                         .global::<AudioState>()
-                        .set_current_view(prev_view.into())
+                        .set_current_view(prev_view)
                 }
             });
         });
@@ -289,10 +291,11 @@ fn handle_chapter_download_and_play(
         thread::spawn(move || {
             let audio_service_clone = audio_service_clone.clone();
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                match download_audio(&book, chapter, &URL) {
+                match download_audio(&book, chapter, &URL, &main_window.global::<AudioState>().get_book_view().book_url.to_string()) {
                     Ok(path_buf) => {
                         if let Some(path_str) = path_buf.to_str() {
                             log::info!("Downloaded audio path: {}", path_str);
+                            log::info!("Starting to play!!");
                             audio_service_clone.start(path_str.to_string());
                             audio_service_clone.play();
                             main_window.global::<AudioState>().set_paused(false);
@@ -313,11 +316,11 @@ fn handle_chapter_download_and_play(
 
 fn handle_chapter_download(main_window: &AppWindow, audio_state: &AudioState) {
     let main_window_weak = main_window.as_weak();
-    audio_state.on_chapter_download_and_play(move |book, chapter, URL| {
+    audio_state.on_chapter_download(move |book, chapter, URL| {
         let main_window_weak = main_window_weak.clone();
         thread::spawn(move || {
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                match download_audio(&book, chapter, &URL) {
+                match download_audio(&book, chapter, &URL, &main_window.global::<AudioState>().get_book_view().book_url.to_string()) {
                     Ok(path_buf) => {
                         if let Some(path_str) = path_buf.to_str() {
                             log::info!("Downloaded audio path: {}", path_str);
@@ -355,12 +358,22 @@ fn handle_book_view(
             let webapi_client_clone = webapi_client_clone.clone();
             let main_window_weak = main_window_weak.clone();
 
-            let mut book = api::types::Book::default();
+            let mut book: api::types::Book = Default::default();
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
                 if let Ok(Some(book_thing)) = get_saved_book(book_title.to_string()) {
                     book = book_thing;
+
+                    let mut book_online = Runtime::new()
+                    .unwrap()
+                    .block_on(webapi_client_clone.clone().get_book(book_url.to_string()))
+                    .unwrap();
+
+                    if book.chapter_urls.len() != book_online.chapter_urls.len() {
+                        book_online.image_URL = book.image_URL;
+                        book_online.saved = true;
+                        book = book_online;
+                    }
                 } else {
-                    // We also need to implement caching!
                     book = Runtime::new()
                         .unwrap()
                         .block_on(webapi_client_clone.clone().get_book(book_url.to_string()))
