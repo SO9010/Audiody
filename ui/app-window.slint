@@ -106,7 +106,7 @@ export component AppWindow inherits Window {
         }
 
         Timer {
-            interval: 100ms;
+            interval: 500ms;
             running: !AudioState.paused;
             triggered() => {
                 AudioState.playing-action();

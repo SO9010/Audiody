@@ -10,7 +10,7 @@ pub mod audio;
 pub mod storage;
 
 use api::{webapi::WebApiClient, webimage::url_to_buffer};
-use storage::save::{download_audio, get_progress, save_progress};
+use storage::save::{download_audio, get_progress, save_progress, settings};
 use storage::saved::get_saved_book;
 use storage::saved::get_saved_books;
 use storage::setup::music_dir;
@@ -101,6 +101,8 @@ fn handle_ui_actions(
     handle_add_queue(main_window, audio_state, audio_service);
 
     handle_pause(main_window, audio_state, audio_service);
+
+    handle_resume(main_window, audio_state, audio_service);
 
     let audio_service_clone = audio_service.clone();
     audio_state.on_skip_backward(move || {
@@ -496,11 +498,11 @@ fn handle_playing(
 
                 let current_pos = audio_service_clone.get_current_pos() as f32;
                 let chapter_len = audio_service_clone.get_chapter_len(audio_path.clone().to_str().unwrap()).as_secs_f32();
-
+                log::info!("Current len: {}", current_pos);
                 main_window.global::<AudioState>().set_timing(
                     current_pos / chapter_len
                 );
-                save_progress(
+                let _ = save_progress(
                     &main_window.global::<AudioState>().get_now_playing().title,
                     get_progress(&main_window.global::<AudioState>().get_now_playing().title).unwrap().current_chapter,
                     &main_window.global::<AudioState>().get_now_playing().book_url.as_str(),
@@ -510,6 +512,41 @@ fn handle_playing(
         });
     });
 }
+
+fn handle_resume(
+    main_window: &AppWindow,
+    audio_state: &AudioState<'_>,
+    audio_service: &AudioService,
+) {
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_resume(move |title| {
+        let main_window_weak = main_window_weak.clone();
+        let audio_service_clone = audio_service_clone.clone();
+        thread::spawn(move || {
+            let audio_service_clone = audio_service_clone.clone();
+            let main_window_weak = main_window_weak.clone();
+            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+                let audio_path = music_dir().unwrap().as_path().join(title);
+                let settings_file = audio_path.clone().join("settings.json");
+                let settings = settings::load(&settings_file).unwrap();
+                
+                let audio_path = audio_path.join(format!{"chapter_{}.mp3", settings.current_chapter.unwrap()});
+                let play_pos = settings.current_chapter_time.unwrap();
+                audio_service_clone.start(audio_path.display().to_string());
+                log::info!("Play pis: {}", play_pos);
+                audio_service_clone.seek((play_pos * audio_service_clone.get_chapter_len(&audio_path.display().to_string()).as_secs_f64()) as f32);
+                let current_book_view = main_window.global::<AudioState>().get_book_view();
+
+                main_window.global::<AudioState>().set_now_playing(current_book_view);
+                audio_service_clone.play();
+                main_window.global::<AudioState>().set_paused(false);
+                main_window.global::<AudioState>().set_playing(true);
+            });
+        });
+    });
+}   
+
 
 #[cfg(target_os = "android")]
 #[no_mangle]

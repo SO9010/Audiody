@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use image::io::Reader;
 use image::DynamicImage;
@@ -16,6 +16,30 @@ pub struct settings {
     pub book_url: String,
     pub current_chapter: Option<i32>,
     pub current_chapter_time: Option<f64>,
+}
+
+impl settings {
+    pub fn new() -> Self {
+        settings {
+            book_url: "".to_string(),
+            current_chapter: None,
+            current_chapter_time: None,
+        }
+    }
+
+    pub fn save(&self, file_path: &PathBuf) -> io::Result<()> {
+        let mut file = File::create(file_path)?;
+        let mut writer = BufWriter::new(&mut file);
+        serde_json::to_writer(&mut writer, self)?;
+        Ok(())
+    }
+
+    pub fn load(file_path: &PathBuf) -> io::Result<Self> {
+        let file = File::open(file_path)?;
+        let reader = BufReader::new(file);
+        let settings = serde_json::from_reader(reader)?;
+        Ok(settings)
+    }
 }
 
 /// Book, Chapter, URL
@@ -106,15 +130,14 @@ pub fn download_audio(
 pub fn save_progress(book: &str, chapt: Option<i32>, url: &str, chapter_play_time: Option<f64>) -> Result<(), Box<dyn std::error::Error>> {
     let audio_path = music_dir().unwrap().as_path().join(book);
     let settings_file = audio_path.clone().join("settings.json");
-    let mut settings = File::create(settings_file)?;
+    let mut settings = settings::new();
+    settings = settings {
+        book_url: url.to_string(),
+        current_chapter: chapt,
+        current_chapter_time: chapter_play_time,
+    };
 
-    settings.write_all(serde_json::to_string(
-        &settings {
-            book_url: url.to_string(),
-            current_chapter: chapt,
-            current_chapter_time: chapter_play_time,
-        }
-    ).unwrap().as_bytes());
+    settings.save(&settings_file)?;
 
     Ok(())
 }

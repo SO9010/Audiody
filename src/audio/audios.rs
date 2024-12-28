@@ -21,6 +21,7 @@ enum AudioCommand {
     Pause,
     Speed(f32),
     RelativeSeek(i64),
+    Seek(f32),
     Volume(f32),
 }
 
@@ -91,6 +92,11 @@ impl AudioService {
                             sink.try_seek(std::time::Duration::from_secs(new_pos as u64));
                         }
                     }
+                    Ok(AudioCommand::Seek(seconds)) => {
+                        if let Some(sink) = sink_clone.lock().unwrap().as_ref() {
+                            sink.try_seek(std::time::Duration::from_secs_f32(seconds));
+                        }
+                    }
                     Ok(AudioCommand::Volume(volume)) => {
                         if let Some(sink) = sink_clone.lock().unwrap().as_ref() {
                             sink.set_volume(volume);
@@ -141,6 +147,13 @@ impl AudioService {
             .unwrap();
     }
 
+    pub fn seek(&self, seconds: f32) {
+        // Send a signal to the audio thread to set the speed
+        self.command_tx
+            .send(AudioCommand::Seek(seconds))
+            .unwrap();
+    }
+
     pub fn set_volume(&self, volume: f32) {
         // Send a signal to the audio thread to set the speed
         self.command_tx
@@ -155,7 +168,11 @@ impl AudioService {
         duration
     }
 
-    pub fn get_current_pos(&self) -> u64 {
-        *self.playback_distance.lock().unwrap()
+    pub fn get_current_pos(&self) -> f32 {
+        if let Some(sink) = self.sink.lock().unwrap().as_ref() {
+           sink.get_pos().as_secs_f32()
+        } else {
+            0.0
+        }
     }
 }

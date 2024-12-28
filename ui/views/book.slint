@@ -22,6 +22,18 @@ export component BookDetail inherits Rectangle {
                     border-radius: 5px;
                     background: downloadAll.pressed ? Palette.selection-background : Palette.alternate-background;
                     Text {
+                        text: "Resume!";
+                    }
+                    resume := TouchArea {
+                        clicked => { 
+                            AudioState.resume(AudioState.book-view.title);
+                         }
+                    }
+                }
+                Rectangle {
+                    border-radius: 5px;
+                    background: downloadAll.pressed ? Palette.selection-background : Palette.alternate-background;
+                    Text {
                         text: "Download";
                     }
                     downloadAll := TouchArea {

@@ -12,14 +12,12 @@ pub fn config_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Specify the name of the directory you want to create
     let new_dir = base_dir.join("Audiody");
     if new_dir.exists() {
-        println!("Directory already exists!");
         return Ok(new_dir.clone());
     }
 
     // Create the directory
     fs::create_dir_all(new_dir.clone())?;
 
-    println!("Directory created successfully!");
 
     Ok(new_dir)
 }
@@ -35,7 +33,6 @@ pub fn music_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Specify the name of the directory you want to create
     let new_dir = base_dir.join("Audiody").join("books");
     if new_dir.exists() {
-        println!("Directory already exists!");
         return Ok(new_dir.clone());
     }
 
