@@ -109,9 +109,12 @@ export component AppWindow inherits Window {
             interval: 500ms;
             running: !AudioState.paused;
             triggered() => {
+                if (AudioState.playing) {}
                 AudioState.playing-action();
-                if (AudioState.timing >= 0.95) {
+                if (AudioState.timing >= 0.9) {
                     AudioState.queue-next-track()
+                } if (AudioState.timing == 1.0) {
+                    AudioState.notif-next-track()
                 }
             }
         }

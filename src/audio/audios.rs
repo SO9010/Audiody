@@ -162,6 +162,7 @@ impl AudioService {
     }
 
     pub fn get_chapter_len(&self, chapter_path: &str) -> std::time::Duration {
+        log::info!("Getting chapter length for: {}", chapter_path);
         let file = std::fs::File::open(chapter_path).unwrap();
         let source = Decoder::new(BufReader::new(file)).unwrap();
         let duration: std::time::Duration = source.total_duration().unwrap();

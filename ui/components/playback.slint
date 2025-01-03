@@ -7,6 +7,7 @@ export global AudioState {
     in-out property <bool> paused: true;
     in-out property <float> timing: 0.0;
     in-out property <float> playback_update: 0.01;
+    in-out property <float> playback_length: 0.00;
     in-out property <string> page-name: "Audiody";
     in-out property <float> speed: 1.0;
 
@@ -25,6 +26,7 @@ export global AudioState {
     callback skip-backward();
     callback change-speed();
     callback queue-next-track();
+    callback notif-next-track();
     callback playing-action();
 
     // Paging

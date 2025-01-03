@@ -1,5 +1,6 @@
+use api::webapi;
 use audio::audios::AudioService;
-use slint::ComponentHandle;
+use slint::{ComponentHandle, Model};
 use std::path;
 use std::sync::{Arc, Mutex};
 use std::thread::{self};
@@ -11,7 +12,7 @@ pub mod storage;
 
 use api::{webapi::WebApiClient, webimage::url_to_buffer};
 use storage::save::{download_audio, get_progress, save_progress, settings};
-use storage::saved::get_saved_book;
+use storage::saved::{check_book_chapter_url, extract_number, get_saved_book};
 use storage::saved::get_saved_books;
 use storage::setup::music_dir;
 use tokio::runtime::{Handle, Runtime}; // 0.3.5
@@ -95,7 +96,7 @@ fn handle_ui_actions(
 
     handle_book_view(main_window, audio_state, webapi_client);
 
-    // Playback handles    
+    // Playback handles
     handle_playing(main_window, audio_state, audio_service);
 
     handle_add_queue(main_window, audio_state, audio_service);
@@ -103,6 +104,8 @@ fn handle_ui_actions(
     handle_pause(main_window, audio_state, audio_service);
 
     handle_resume(main_window, audio_state, audio_service);
+
+    handle_play_next(main_window, audio_state, audio_service);
 
     let audio_service_clone = audio_service.clone();
     audio_state.on_skip_backward(move || {
@@ -172,10 +175,7 @@ fn handle_previous_page_navigate(
         thread::spawn(move || {
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
                 // Sort it so the loading doesnt work
-                if let Some(mut prev_view) = previous_views.lock().unwrap().pop() {
-                    if prev_view == 100 {
-                        prev_view = previous_views.lock().unwrap().pop().unwrap();
-                    }
+                if let Some(prev_view) = previous_views.lock().unwrap().pop() {
                     if prev_view == 0 {
                         main_window
                             .global::<AudioState>()
@@ -192,7 +192,10 @@ fn handle_previous_page_navigate(
 
 fn handle_page_navigate(audio_state: &AudioState<'_>, previous_views: Arc<Mutex<Vec<i32>>>) {
     audio_state.on_add_previous_page(move |page| {
-        previous_views.lock().unwrap().push(page);
+        if page != 100 {
+            log::info!("Adding previous page: {}", page);
+            previous_views.lock().unwrap().push(page);
+        }
     });
 }
 
@@ -266,6 +269,9 @@ fn handle_search(
                     .global::<AudioState>()
                     .set_search_yt(yt_book_model);
                 main_window.global::<AudioState>().set_current_view(1);
+                main_window
+                    .global::<AudioState>()
+                    .invoke_add_previous_page(1);
             });
         });
     });
@@ -286,7 +292,8 @@ fn handle_pause(main_window: &AppWindow, audio_state: &AudioState, audio_service
     });
 }
 
-fn handle_add_queue(main_window: &AppWindow,
+fn handle_add_queue(
+    main_window: &AppWindow,
     audio_state: &AudioState,
     audio_service: &AudioService,
 ) {
@@ -295,13 +302,64 @@ fn handle_add_queue(main_window: &AppWindow,
     audio_state.on_queue_next_track(move || {
         let audio_service_clone = audio_service_clone.clone();
         let main_window_weak = main_window_weak.clone();
-        thread::spawn(move || {
-            let audio_service_clone = audio_service_clone.clone();
-            let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                main_window.global::<AudioState>().get_now_playing().book_url;
-            });
-    
-            // audio_service_clone.queue();
+        let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+            let playing_book = main_window.global::<AudioState>().get_now_playing();
+            let settings: settings = get_progress(playing_book.title.as_str()).unwrap();
+            let next_chapter = settings.current_chapter.unwrap() + 1;
+
+            // Store current settings before download
+            let current_settings = settings.clone();
+
+            let download = download_audio(
+                &playing_book.title.to_string(),
+                next_chapter,
+                &playing_book
+                    .chapter_urls
+                    .row_data(next_chapter.try_into().unwrap())
+                    .unwrap()
+                    .to_string(),
+                &settings.book_url,
+            )
+            .unwrap()
+            .display()
+            .to_string();
+
+            // Restore settings after download
+            save_progress(
+                &playing_book.title.to_string(),
+                current_settings.current_chapter,
+                &current_settings.book_url,
+                current_settings.current_chapter_time,
+            );
+
+            audio_service_clone.queue(download);
+        });
+    });
+}
+
+fn handle_play_next(
+    main_window: &AppWindow,
+    audio_state: &AudioState,
+    audio_service: &AudioService,
+) {
+    let main_window_weak = main_window.as_weak();
+    let audio_service_clone = audio_service.clone();
+    audio_state.on_notif_next_track(move || {
+        let audio_service_clone = audio_service_clone.clone();
+        let main_window_weak = main_window_weak.clone();
+        let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
+            let currrent_settings: settings =
+                get_progress(&main_window.global::<AudioState>().get_now_playing().title).unwrap();
+            save_progress(
+                &main_window.global::<AudioState>().get_now_playing().title,
+                Some((currrent_settings.current_chapter).unwrap() + 1),
+                &main_window
+                    .global::<AudioState>()
+                    .get_now_playing()
+                    .book_url
+                    .as_str(),
+                Some((0.0) as f64),
+            );
         });
     });
 }
@@ -333,21 +391,43 @@ fn handle_chapter_download_and_play(
                         if let Some(path_str) = path_buf.to_str() {
                             log::info!("Downloaded audio path: {}", path_str);
                             log::info!("Starting to play!!");
-                            audio_service_clone.start(path_str.to_string());
+                            audio_service_clone.start(path_str.clone().to_string());
                             audio_service_clone.play();
+                            main_window.global::<AudioState>().set_playback_length(audio_service_clone.get_chapter_len(
+                                &check_book_chapter_url(
+                                    get_progress(&main_window.global::<AudioState>().get_now_playing().title.to_string())
+                                        .unwrap().current_chapter.unwrap().try_into().unwrap(),
+                                    main_window.global::<AudioState>().get_now_playing().title.to_string()
+                                ).unwrap().unwrap().display().to_string().as_str()
+                            ).as_secs_f32());
+
                             main_window.global::<AudioState>().set_paused(false);
                             // TODO: Optimise this so that it doesnt refresh the whole thing
                             main_window.global::<AudioState>().get_home_page_books();
-                            let child = path_buf.file_name()
-                            .unwrap()
-                            .to_ascii_lowercase()
-                            .into_string()
-                            .unwrap()
-                            .split_off(8); // Remove first 8 chars ("chapter_")
-                        
-                            let chapter_number = child[..child.len()-4].to_string(); // Remove last 4 chars (".mp3")
+                            let child = path_buf
+                                .file_name()
+                                .unwrap()
+                                .to_ascii_lowercase()
+                                .into_string()
+                                .unwrap()
+                                .split_off(8); // Remove first 8 chars ("chapter_")
+
+                            let mut chapter_number = child[..child.len() - 4].to_string(); // Remove last 4 chars (".mp3")
+                            log::info!("chapter to get{}", path_str);
+                            if !child.contains("chapter") {
+                                chapter_number = extract_number(path_str.clone()).unwrap_or(0).to_string();
+                            }
                             if let Ok(chapter_num) = chapter_number.parse::<i32>() {
-                                save_progress(&main_window.global::<AudioState>().get_now_playing().title, Some(chapter_num), &main_window.global::<AudioState>().get_now_playing().book_url.as_str(), None);
+                                save_progress(
+                                    &main_window.global::<AudioState>().get_now_playing().title,
+                                    Some(chapter_num),
+                                    &main_window
+                                        .global::<AudioState>()
+                                        .get_now_playing()
+                                        .book_url
+                                        .as_str(),
+                                    None,
+                                );
                             } else {
                                 log::error!("Failed to parse chapter number: {}", chapter_number);
                             }
@@ -363,6 +443,7 @@ fn handle_chapter_download_and_play(
         });
     })
 }
+
 fn handle_chapter_download(main_window: &AppWindow, audio_state: &AudioState) {
     let main_window_weak = main_window.as_weak();
     audio_state.on_chapter_download(move |book, chapter, URL| {
@@ -426,11 +507,9 @@ fn handle_book_view(
                         .block_on(webapi_client_clone.clone().get_book(book_url.to_string()))
                         .unwrap();
 
-                    if book.chapter_urls.len() != book_online.chapter_urls.len() {
-                        book_online.image_URL = book.image_URL;
-                        book_online.saved = true;
-                        book = book_online;
-                    }
+                    book_online.image_URL = book.image_URL;
+                    book_online.saved = true;
+                    book = book_online;
                 } else {
                     book = Runtime::new()
                         .unwrap()
@@ -494,18 +573,15 @@ fn handle_playing(
 
             // Make this far more efficient
             let _ = main_window_weak.upgrade_in_event_loop(move |main_window| {
-                let audio_path = music_dir().unwrap().as_path().join(main_window.global::<AudioState>().get_now_playing().title).join(format!{"chapter_{}.mp3", get_progress(&main_window.global::<AudioState>().get_now_playing().title).unwrap().current_chapter.unwrap()});
-
                 let current_pos = audio_service_clone.get_current_pos() as f32;
-                let chapter_len = audio_service_clone.get_chapter_len(audio_path.clone().to_str().unwrap()).as_secs_f32();
-                log::info!("Current len: {}", current_pos);
                 main_window.global::<AudioState>().set_timing(
-                    current_pos / chapter_len
+                    current_pos / main_window.global::<AudioState>().get_playback_length()
                 );
+                let chapter_len = main_window.global::<AudioState>().get_playback_length();
                 let _ = save_progress(
-                    &main_window.global::<AudioState>().get_now_playing().title,
-                    get_progress(&main_window.global::<AudioState>().get_now_playing().title).unwrap().current_chapter,
-                    &main_window.global::<AudioState>().get_now_playing().book_url.as_str(),
+                    &main_window.global::<AudioState>().get_now_playing().title.to_string(),
+                    get_progress(&main_window.global::<AudioState>().get_now_playing().title.to_string()).unwrap().current_chapter,
+                    main_window.global::<AudioState>().get_now_playing().book_url.as_str(),
                     Some((current_pos / chapter_len) as f64)
                 );
             });
@@ -530,24 +606,33 @@ fn handle_resume(
                 let audio_path = music_dir().unwrap().as_path().join(title);
                 let settings_file = audio_path.clone().join("settings.json");
                 let settings = settings::load(&settings_file).unwrap();
-                
-                let audio_path = audio_path.join(format!{"chapter_{}.mp3", settings.current_chapter.unwrap()});
+
                 let play_pos = settings.current_chapter_time.unwrap();
                 audio_service_clone.start(audio_path.display().to_string());
-                log::info!("Play pis: {}", play_pos);
-                audio_service_clone.seek((play_pos * audio_service_clone.get_chapter_len(&audio_path.display().to_string()).as_secs_f64()) as f32);
+                main_window.global::<AudioState>().set_playback_length(audio_service_clone.get_chapter_len(
+                    &check_book_chapter_url(
+                        get_progress(&main_window.global::<AudioState>().get_now_playing().title.to_string())
+                            .unwrap().current_chapter.unwrap().try_into().unwrap(),
+                        main_window.global::<AudioState>().get_now_playing().title.to_string()
+                    ).unwrap().unwrap().display().to_string().as_str()
+                ).as_secs_f32());
+                audio_service_clone.seek(
+                    (play_pos as f32
+                        * main_window.global::<AudioState>().get_playback_length()) as f32
+                );
+                
                 let current_book_view = main_window.global::<AudioState>().get_book_view();
 
-                main_window.global::<AudioState>().set_now_playing(current_book_view);
+                main_window
+                    .global::<AudioState>()
+                    .set_now_playing(current_book_view);
                 audio_service_clone.play();
                 main_window.global::<AudioState>().set_paused(false);
                 main_window.global::<AudioState>().set_playing(true);
             });
         });
     });
-}   
-
-
+}
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: slint::android::AndroidApp) {
